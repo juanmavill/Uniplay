@@ -10,6 +10,7 @@ public record StartRoundResponse(
         UUID roundId,
         String word,
         String mode,
+        String deck,
         String status,
         Instant startedAt,
         Instant endsAt
@@ -21,6 +22,7 @@ public record StartRoundResponse(
                 result.roundId(),
                 result.word(),
                 result.mode(),
+                result.deck(),
                 result.status(),
                 result.startedAt(),
                 result.endsAt()

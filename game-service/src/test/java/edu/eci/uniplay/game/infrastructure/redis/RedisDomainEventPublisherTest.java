@@ -34,6 +34,7 @@ class RedisDomainEventPublisherTest {
                 UUID.fromString("11111111-1111-1111-1111-111111111111"),
                 "Campus",
                 "ALL_DRAW",
+                "SISTEMAS",
                 Instant.parse("2026-07-07T12:00:00Z"),
                 Instant.parse("2026-07-07T12:01:00Z"),
                 Instant.parse("2026-07-07T12:00:00Z")
@@ -41,7 +42,7 @@ class RedisDomainEventPublisherTest {
 
         verify(redisTemplate).convertAndSend(
                 eq(RedisDomainEventPublisher.ROUND_STARTED_CHANNEL),
-                contains("\"mode\":\"ALL_DRAW\"")
+                contains("\"deck\":\"SISTEMAS\"")
         );
     }
 

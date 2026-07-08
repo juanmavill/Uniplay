@@ -11,12 +11,15 @@ POST /games/{codigo}/rounds
 Content-Type: application/json
 
 {
-  "mode": "ALL_DRAW"
+  "mode": "ALL_DRAW",
+  "deck": "SISTEMAS"
 }
 ```
 
 El campo `mode` es opcional. Si se omite, la ronda se crea en modo `CLASSIC`.
 Use `ALL_DRAW` para activar el modo en el que todos dibujan y luego votan.
+El campo `deck` tambien es opcional. Si se omite, se usa `GENERAL`. Mazos
+disponibles: `GENERAL`, `MATEMATICAS`, `SISTEMAS`, `FISICA`.
 
 Respuesta exitosa:
 
@@ -31,6 +34,7 @@ Location: /games/{codigo}
   "roundId": "11111111-1111-1111-1111-111111111111",
   "word": "Campus",
   "mode": "ALL_DRAW",
+  "deck": "SISTEMAS",
   "status": "ACTIVE",
   "startedAt": "2026-07-07T12:00:00Z",
   "endsAt": "2026-07-07T12:01:00Z"

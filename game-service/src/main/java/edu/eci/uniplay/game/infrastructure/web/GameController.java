@@ -65,7 +65,8 @@ public class GameController {
     ) {
         StartRoundResult result = startRoundUseCase.startRound(new StartRoundCommand(
                 roomCode,
-                request == null ? null : request.mode()
+                request == null ? null : request.mode(),
+                request == null ? null : request.deck()
         ));
         return ResponseEntity
                 .created(URI.create("/games/" + result.roomCode()))

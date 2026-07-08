@@ -8,6 +8,7 @@ public record StartRoundResult(
         UUID roundId,
         String word,
         String mode,
+        String deck,
         String status,
         Instant startedAt,
         Instant endsAt

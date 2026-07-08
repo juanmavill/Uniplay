@@ -72,24 +72,34 @@ class GameControllerTest {
                 ROUND_ID,
                 "Campus",
                 "ALL_DRAW",
+                "SISTEMAS",
                 "ACTIVE",
                 NOW,
                 NOW.plusSeconds(60)
         ));
 
-        mockMvc.perform(post("/games/abc123/rounds"))
+        mockMvc.perform(post("/games/abc123/rounds")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "mode": "ALL_DRAW",
+                                  "deck": "sistemas"
+                                }
+                                """))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/games/ABC123"))
                 .andExpect(jsonPath("$.roomCode").value("ABC123"))
                 .andExpect(jsonPath("$.word").value("Campus"))
                 .andExpect(jsonPath("$.mode").value("ALL_DRAW"))
+                .andExpect(jsonPath("$.deck").value("SISTEMAS"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
                 .andExpect(jsonPath("$.endsAt").value("2026-07-07T12:01:00Z"));
 
         ArgumentCaptor<StartRoundCommand> captor = ArgumentCaptor.forClass(StartRoundCommand.class);
         verify(startRoundUseCase).startRound(captor.capture());
         assertThat(captor.getValue().roomCode()).isEqualTo("abc123");
-        assertThat(captor.getValue().mode()).isNull();
+        assertThat(captor.getValue().mode()).isEqualTo("ALL_DRAW");
+        assertThat(captor.getValue().deck()).isEqualTo("sistemas");
     }
 
     @Test

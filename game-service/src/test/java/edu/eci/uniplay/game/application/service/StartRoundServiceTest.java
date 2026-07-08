@@ -39,11 +39,12 @@ class StartRoundServiceTest {
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
 
-        StartRoundResult result = service.startRound(new StartRoundCommand("abc123", "ALL_DRAW"));
+        StartRoundResult result = service.startRound(new StartRoundCommand("abc123", "ALL_DRAW", "sistemas"));
 
         assertThat(result.roomCode()).isEqualTo("ABC123");
         assertThat(result.word()).isEqualTo("Campus");
         assertThat(result.mode()).isEqualTo("ALL_DRAW");
+        assertThat(result.deck()).isEqualTo("SISTEMAS");
         assertThat(result.status()).isEqualTo("ACTIVE");
         assertThat(result.startedAt()).isEqualTo(NOW);
         assertThat(result.endsAt()).isEqualTo(NOW.plusSeconds(45));
@@ -53,6 +54,7 @@ class StartRoundServiceTest {
             assertThat(event.roundId()).isEqualTo(result.roundId());
             assertThat(event.word()).isEqualTo("Campus");
             assertThat(event.mode()).isEqualTo("ALL_DRAW");
+            assertThat(event.deck()).isEqualTo("SISTEMAS");
             assertThat(event.startedAt()).isEqualTo(NOW);
             assertThat(event.endsAt()).isEqualTo(NOW.plusSeconds(45));
             assertThat(event.occurredAt()).isEqualTo(NOW);

@@ -65,6 +65,7 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
             String roundId,
             String word,
             String mode,
+            String deck,
             String startedAt,
             String endsAt,
             String occurredAt
@@ -76,6 +77,7 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
                     event.roundId().toString(),
                     event.word(),
                     event.mode(),
+                    event.deck(),
                     event.startedAt().toString(),
                     event.endsAt().toString(),
                     event.occurredAt().toString()
