@@ -239,18 +239,6 @@ h1 {
   padding-top: 0;
 }
 
-.share-link {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-}
-
-.share-link input {
-  min-width: 0;
-  color: #60727a;
-  font-size: 12px;
-}
-
 .button-row {
   display: flex;
   gap: 8px;
@@ -575,7 +563,6 @@ h1 {
   .left-rail,
   .right-rail,
   .round-banner,
-  .share-link,
   .lobby-form {
     grid-template-columns: 1fr;
   }

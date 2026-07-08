@@ -43,7 +43,6 @@ function App() {
   const [gameState, setGameState] = React.useState(null);
   const [answer, setAnswer] = React.useState("");
   const [chatMessages, setChatMessages] = React.useState([]);
-  const [playerLink, setPlayerLink] = React.useState("");
   const [deck, setDeck] = React.useState("SISTEMAS");
   const [mode, setMode] = React.useState("CLASSIC");
   const [candidateId, setCandidateId] = React.useState("");
@@ -257,7 +256,6 @@ function App() {
     setRound(null);
     setGameState(null);
     setChatMessages([]);
-    setPlayerLink("");
     setStompState("offline");
   }
 
@@ -266,7 +264,6 @@ function App() {
       const createdRoom = await api.createRoom(21);
       const joined = await api.joinRoom(createdRoom.code, playerName.trim() || "Jugador");
       setTurnNumber(0);
-      setPlayerLink("");
       setChatMessages([{ id: crypto.randomUUID(), type: "system", tone: "system", text: `Sala ${joined.code} creada` }]);
       navigateToPlayer(joined.code, joined.playerId);
     });
@@ -279,7 +276,6 @@ function App() {
         throw new Error("Ingresa o crea un codigo de sala");
       }
       const joined = await api.joinRoom(code, playerName.trim() || "Jugador");
-      setPlayerLink("");
       addSystemMessage(`${joined.playerName} entro a la sala`);
       navigateToPlayer(joined.code, joined.playerId);
     });
@@ -292,25 +288,6 @@ function App() {
       }
       const result = await api.listPlayers(currentRoomCode);
       setPlayers(result.players || []);
-    });
-  }
-
-  async function openPlayerTab() {
-    if (!currentRoomCode) {
-      setError("Crea o unete a una sala antes de abrir otro jugador");
-      return;
-    }
-    await runAction(async () => {
-      const joined = await api.joinRoom(currentRoomCode, nextPlayerName(players));
-      const targetUrl = new URL(playerPath(joined.code, joined.playerId), window.location.origin);
-      setPlayerLink(targetUrl.toString());
-      try {
-        await navigator.clipboard?.writeText(targetUrl.toString());
-      } catch {
-        // The visible link is still available when clipboard permission is denied.
-      }
-      setPlayers(joined.players || []);
-      addSystemMessage(`${joined.playerName} entro a la sala. Enlace generado.`);
     });
   }
 
@@ -509,23 +486,10 @@ function App() {
             <StatusLine label="Tu jugador" value={player?.playerName || "Cargando"} tone={player?.playerId ? "good" : "muted"} />
             <StatusLine label="Tiempo real" value={stompState} tone={stompState === "online" ? "good" : "muted"} />
             <div className="button-row">
-              <button onClick={openPlayerTab} disabled={!currentRoomCode}>
-                <Users size={16} />
-                Nuevo enlace
-              </button>
               <button onClick={goToLobby}>
                 Lobby
               </button>
             </div>
-            {playerLink && (
-              <div className="share-link">
-                <input aria-label="Enlace de nuevo jugador" value={playerLink} readOnly />
-                <button onClick={() => window.open(playerLink, "_blank", "noopener,noreferrer")}>
-                  <Copy size={16} />
-                  Abrir
-                </button>
-              </div>
-            )}
           </section>
 
           <section className="panel players-panel">
