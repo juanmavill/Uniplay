@@ -4,10 +4,12 @@ import java.time.Clock;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.eci.uniplay.voice.application.port.in.ChangeMuteStateUseCase;
+import edu.eci.uniplay.voice.application.port.in.ChangeSpeakingStateUseCase;
 import edu.eci.uniplay.voice.application.port.in.GenerateVoiceTokenUseCase;
 import edu.eci.uniplay.voice.application.port.out.VoiceEventPublisher;
 import edu.eci.uniplay.voice.application.port.out.VoiceTokenIssuer;
 import edu.eci.uniplay.voice.application.service.ChangeMuteStateService;
+import edu.eci.uniplay.voice.application.service.ChangeSpeakingStateService;
 import edu.eci.uniplay.voice.application.service.GenerateVoiceTokenService;
 import edu.eci.uniplay.voice.infrastructure.livekit.LiveKitVoiceTokenIssuer;
 import edu.eci.uniplay.voice.infrastructure.redis.RedisVoiceEventPublisher;
@@ -45,5 +47,10 @@ public class VoiceServiceConfiguration {
     @Bean
     ChangeMuteStateUseCase changeMuteStateUseCase(VoiceEventPublisher voiceEventPublisher, Clock clock) {
         return new ChangeMuteStateService(voiceEventPublisher, clock);
+    }
+
+    @Bean
+    ChangeSpeakingStateUseCase changeSpeakingStateUseCase(VoiceEventPublisher voiceEventPublisher, Clock clock) {
+        return new ChangeSpeakingStateService(voiceEventPublisher, clock);
     }
 }

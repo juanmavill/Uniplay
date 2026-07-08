@@ -4,6 +4,7 @@ import java.time.Instant;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.eci.uniplay.voice.application.event.MuteStateChangedEvent;
+import edu.eci.uniplay.voice.application.event.SpeakingStateChangedEvent;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
@@ -30,6 +31,25 @@ class RedisVoiceEventPublisherTest {
         verify(redisTemplate).convertAndSend(
                 eq("voz.microfono_actualizado"),
                 contains("\"muted\":true")
+        );
+    }
+
+    @Test
+    void publishesSpeakingStateChangedEvent() {
+        StringRedisTemplate redisTemplate = mock(StringRedisTemplate.class);
+        RedisVoiceEventPublisher publisher = new RedisVoiceEventPublisher(redisTemplate, new ObjectMapper());
+
+        publisher.publishSpeakingStateChanged(new SpeakingStateChangedEvent(
+                "ABC123",
+                "uniplay-ABC123",
+                "22222222-2222-2222-2222-222222222222",
+                true,
+                Instant.parse("2026-07-07T12:00:00Z")
+        ));
+
+        verify(redisTemplate).convertAndSend(
+                eq("voz.jugador_hablando"),
+                contains("\"speaking\":true")
         );
     }
 }

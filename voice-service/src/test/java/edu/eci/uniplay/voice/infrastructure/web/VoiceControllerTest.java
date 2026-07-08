@@ -3,8 +3,10 @@ package edu.eci.uniplay.voice.infrastructure.web;
 import java.time.Instant;
 
 import edu.eci.uniplay.voice.application.dto.MuteStateResult;
+import edu.eci.uniplay.voice.application.dto.SpeakingStateResult;
 import edu.eci.uniplay.voice.application.dto.VoiceTokenResult;
 import edu.eci.uniplay.voice.application.port.in.ChangeMuteStateUseCase;
+import edu.eci.uniplay.voice.application.port.in.ChangeSpeakingStateUseCase;
 import edu.eci.uniplay.voice.application.port.in.GenerateVoiceTokenUseCase;
 import edu.eci.uniplay.voice.infrastructure.web.error.GlobalExceptionHandler;
 import org.junit.jupiter.api.Test;
@@ -33,7 +35,11 @@ class VoiceControllerTest {
                 "jwt-token",
                 Instant.parse("2026-07-07T12:30:00Z")
         ));
-        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new VoiceController(useCase, mock(ChangeMuteStateUseCase.class)))
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new VoiceController(
+                        useCase,
+                        mock(ChangeMuteStateUseCase.class),
+                        mock(ChangeSpeakingStateUseCase.class)
+                ))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
 
@@ -55,7 +61,8 @@ class VoiceControllerTest {
     void rejectsInvalidRequestBody() throws Exception {
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new VoiceController(
                         mock(GenerateVoiceTokenUseCase.class),
-                        mock(ChangeMuteStateUseCase.class)
+                        mock(ChangeMuteStateUseCase.class),
+                        mock(ChangeSpeakingStateUseCase.class)
                 ))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -79,7 +86,8 @@ class VoiceControllerTest {
         ));
         MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new VoiceController(
                         mock(GenerateVoiceTokenUseCase.class),
-                        useCase
+                        useCase,
+                        mock(ChangeSpeakingStateUseCase.class)
                 ))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
@@ -95,5 +103,36 @@ class VoiceControllerTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.muted").value(true));
+    }
+
+    @Test
+    void changesSpeakingState() throws Exception {
+        ChangeSpeakingStateUseCase useCase = mock(ChangeSpeakingStateUseCase.class);
+        when(useCase.changeSpeakingState(any())).thenReturn(new SpeakingStateResult(
+                "ABC123",
+                "uniplay-ABC123",
+                "22222222-2222-2222-2222-222222222222",
+                true,
+                Instant.parse("2026-07-07T12:00:00Z")
+        ));
+        MockMvc mockMvc = MockMvcBuilders.standaloneSetup(new VoiceController(
+                        mock(GenerateVoiceTokenUseCase.class),
+                        mock(ChangeMuteStateUseCase.class),
+                        useCase
+                ))
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+
+        mockMvc.perform(post("/voice/speaking")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "roomCode": "ABC123",
+                                  "playerId": "22222222-2222-2222-2222-222222222222",
+                                  "speaking": true
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.speaking").value(true));
     }
 }
