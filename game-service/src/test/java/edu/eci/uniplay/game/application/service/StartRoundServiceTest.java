@@ -33,7 +33,7 @@ class StartRoundServiceTest {
         RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
         StartRoundService service = new StartRoundService(
                 repository,
-                roomCode -> new SecretWord("Campus"),
+                (roomCode, deck) -> new SecretWord("Campus"),
                 eventPublisher,
                 Duration.ofSeconds(45),
                 Clock.fixed(NOW, ZoneOffset.UTC)

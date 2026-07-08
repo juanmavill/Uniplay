@@ -51,7 +51,7 @@ public class StartRoundService implements StartRoundUseCase {
         Instant endsAt = startedAt.plus(roundDuration);
         GameSession session = gameSessionRepository.findByRoomCode(roomCode)
                 .orElseGet(() -> GameSession.newFor(roomCode));
-        SecretWord secretWord = wordDeckProvider.nextWord(roomCode);
+        SecretWord secretWord = wordDeckProvider.nextWord(roomCode, null);
         RoundId roundId = new RoundId(UUID.randomUUID());
 
         GameSession updatedSession = session.startRound(roundId, secretWord, mode, startedAt, endsAt);

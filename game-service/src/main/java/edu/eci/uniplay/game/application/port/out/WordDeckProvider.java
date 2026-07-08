@@ -5,5 +5,5 @@ import edu.eci.uniplay.game.domain.model.SecretWord;
 
 public interface WordDeckProvider {
 
-    SecretWord nextWord(RoomCode roomCode);
+    SecretWord nextWord(RoomCode roomCode, String deck);
 }
