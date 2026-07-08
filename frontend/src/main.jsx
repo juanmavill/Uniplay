@@ -8,6 +8,7 @@ import "./styles.css";
 
 const DECKS = ["GENERAL", "MATEMATICAS", "SISTEMAS", "FISICA"];
 const MODES = ["CLASSIC", "ALL_DRAW"];
+const DEFAULT_ROUND_LIMIT = 3;
 const INITIAL_PARAMS = new URLSearchParams(window.location.search);
 const INITIAL_ROUTE = parsePlayerRoute(window.location.pathname);
 
@@ -45,6 +46,8 @@ function App() {
   const [chatMessages, setChatMessages] = React.useState([]);
   const [deck, setDeck] = React.useState("SISTEMAS");
   const [mode, setMode] = React.useState("CLASSIC");
+  const [roundLimit, setRoundLimit] = React.useState(() => clampRoundLimit(localStorage.getItem("uniplay.roundLimit") || DEFAULT_ROUND_LIMIT));
+  const [roundsStarted, setRoundsStarted] = React.useState(0);
   const [candidateId, setCandidateId] = React.useState("");
   const [voice, setVoice] = React.useState({ connected: false, muted: true, speaking: false, roomName: "" });
   const [stompState, setStompState] = React.useState("offline");
@@ -52,6 +55,7 @@ function App() {
   const [isBusy, setIsBusy] = React.useState(false);
   const [error, setError] = React.useState("");
   const livekitRoomRef = React.useRef(null);
+  const countedRoundIdsRef = React.useRef(new Set());
 
   const api = React.useMemo(() => createApiClient(gatewayUrl), [gatewayUrl]);
   const playerRoute = route;
@@ -62,6 +66,9 @@ function App() {
   const roundIsActive = activeRound?.status === "ACTIVE";
   const timer = useRoundTimer(activeRound);
   const scores = React.useMemo(() => indexScores(gameState?.scores), [gameState]);
+  const hostPlayer = players[0] || null;
+  const isHost = Boolean(player?.playerId && hostPlayer?.playerId === player.playerId);
+  const matchComplete = roundsStarted >= roundLimit && !roundIsActive;
   const activeMode = activeRound?.mode || mode;
   const isAllDrawMode = activeMode === "ALL_DRAW";
   const turnDrawer = players.length > 0 ? players[turnNumber % players.length] : null;
@@ -80,6 +87,10 @@ function App() {
     sessionStorage.setItem("uniplay.playerName", playerName);
     localStorage.setItem("uniplay.playerName", playerName);
   }, [playerName]);
+
+  React.useEffect(() => {
+    localStorage.setItem("uniplay.roundLimit", String(roundLimit));
+  }, [roundLimit]);
 
   React.useEffect(() => {
     const handlePopState = () => setRoute(parsePlayerRoute(window.location.pathname));
@@ -144,6 +155,17 @@ function App() {
       setTurnNumber(0);
     }
   }, [players.length, turnNumber]);
+
+  React.useEffect(() => {
+    if (!activeRound?.roundId || activeRound.status !== "ACTIVE") {
+      return;
+    }
+    if (countedRoundIdsRef.current.has(activeRound.roundId)) {
+      return;
+    }
+    countedRoundIdsRef.current.add(activeRound.roundId);
+    setRoundsStarted((current) => Math.min(current + 1, roundLimit));
+  }, [activeRound?.roundId, activeRound?.status, roundLimit]);
 
   React.useEffect(() => {
     if (!playerRoute || !currentRoomCode) {
@@ -256,6 +278,8 @@ function App() {
     setRound(null);
     setGameState(null);
     setChatMessages([]);
+    setRoundsStarted(0);
+    countedRoundIdsRef.current = new Set();
     setStompState("offline");
   }
 
@@ -264,6 +288,8 @@ function App() {
       const createdRoom = await api.createRoom(21);
       const joined = await api.joinRoom(createdRoom.code, playerName.trim() || "Jugador");
       setTurnNumber(0);
+      setRoundsStarted(0);
+      countedRoundIdsRef.current = new Set();
       setChatMessages([{ id: crypto.randomUUID(), type: "system", tone: "system", text: `Sala ${joined.code} creada` }]);
       navigateToPlayer(joined.code, joined.playerId);
     });
@@ -299,6 +325,12 @@ function App() {
       if (roundIsActive) {
         throw new Error("La ronda actual sigue activa");
       }
+      if (!isHost) {
+        throw new Error("Solo el host puede iniciar rondas");
+      }
+      if (matchComplete) {
+        throw new Error("La partida ya alcanzo el numero de rondas configurado");
+      }
       const nextTurnNumber = activeRound && players.length > 0 ? (turnNumber + 1) % players.length : turnNumber;
       const nextDrawer = players.length > 0 ? players[nextTurnNumber] : null;
       const nextRound = await api.startRound(
@@ -308,12 +340,13 @@ function App() {
         mode === "ALL_DRAW" ? null : nextDrawer?.playerId
       );
       const nextState = await api.getGameState(currentRoomCode, player?.playerId);
+      const displayRound = Math.min(roundsStarted + 1, roundLimit);
       setTurnNumber(nextTurnNumber);
       setRound(nextState.round || nextRound);
       setGameState(nextState);
       clearCanvasById("main-drawing-canvas");
       const drawerName = isAllDrawMode ? "todos" : nextDrawer?.playerName || "turno asignado";
-      addSystemMessage(`Nueva ronda. Dibuja ${drawerName}.`);
+      addSystemMessage(`Ronda ${displayRound} de ${roundLimit}. Dibuja ${drawerName}.`);
     });
   }
 
@@ -445,6 +478,16 @@ function App() {
                 placeholder="ABC123"
               />
             </label>
+            <label>
+              Rondas
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={roundLimit}
+                onChange={(event) => setRoundLimit(clampRoundLimit(event.target.value))}
+              />
+            </label>
           </div>
           <div className="button-row">
             <button className="primary" onClick={createRoom} disabled={isBusy}>
@@ -484,6 +527,7 @@ function App() {
             <PanelTitle icon={<Users size={18} />} title="Sala" />
             <StatusLine label="Codigo" value={currentRoomCode || "Sin sala"} />
             <StatusLine label="Tu jugador" value={player?.playerName || "Cargando"} tone={player?.playerId ? "good" : "muted"} />
+            <StatusLine label="Host" value={hostPlayer?.playerName || "Pendiente"} tone={isHost ? "good" : "muted"} />
             <StatusLine label="Tiempo real" value={stompState} tone={stompState === "online" ? "good" : "muted"} />
             <div className="button-row">
               <button onClick={goToLobby}>
@@ -531,24 +575,47 @@ function App() {
               <span>Tiempo</span>
               <strong>{timer}</strong>
             </div>
+            <div>
+              <span>Ronda</span>
+              <strong>{isHost ? `${roundsStarted}/${roundLimit}` : roundsStarted || "--"}</strong>
+            </div>
           </section>
 
-          <section className="match-controls">
-            <div className="segmented">
-              {MODES.map((item) => (
-                <button key={item} className={mode === item ? "selected" : ""} onClick={() => setMode(item)}>
-                  {item === "CLASSIC" ? "Clasico" : "Todos dibujan"}
-                </button>
-              ))}
-            </div>
-            <select value={deck} onChange={(event) => setDeck(event.target.value)} aria-label="Mazo">
-              {DECKS.map((item) => <option key={item} value={item}>{deckLabel(item)}</option>)}
-            </select>
-            <button className="primary" onClick={startRound} disabled={isBusy || !currentRoomCode || roundIsActive || players.length === 0}>
-              <Play size={16} />
-              {activeRound ? "Siguiente" : "Ronda"}
-            </button>
-          </section>
+          {isHost ? (
+            <section className="match-controls">
+              <div className="segmented">
+                {MODES.map((item) => (
+                  <button key={item} className={mode === item ? "selected" : ""} onClick={() => setMode(item)} disabled={roundIsActive || roundsStarted > 0}>
+                    {item === "CLASSIC" ? "Clasico" : "Todos dibujan"}
+                  </button>
+                ))}
+              </div>
+              <select value={deck} onChange={(event) => setDeck(event.target.value)} aria-label="Mazo" disabled={roundIsActive || roundsStarted > 0}>
+                {DECKS.map((item) => <option key={item} value={item}>{deckLabel(item)}</option>)}
+              </select>
+              <label className="round-count-control">
+                Rondas
+                <input
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={roundLimit}
+                  onChange={(event) => setRoundLimit(clampRoundLimit(event.target.value))}
+                  disabled={roundIsActive || roundsStarted > 0}
+                />
+              </label>
+              <button className="primary" onClick={startRound} disabled={isBusy || !currentRoomCode || roundIsActive || players.length === 0 || matchComplete}>
+                <Play size={16} />
+                {matchComplete ? "Finalizada" : activeRound ? "Siguiente" : "Ronda"}
+              </button>
+            </section>
+          ) : (
+            <section className="match-controls viewer-controls">
+              <StatusLine label="Modo" value={activeMode === "CLASSIC" ? "Clasico" : "Todos dibujan"} />
+              <StatusLine label="Mazo" value={deckLabel(deck)} />
+              <StatusLine label="Rondas" value={roundsStarted || "Esperando host"} />
+            </section>
+          )}
 
           <DrawingBoard
             roomCode={currentRoomCode}
@@ -787,6 +854,14 @@ function useRoundTimer(round) {
   return `${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`;
 }
 
+function clampRoundLimit(value) {
+  const parsed = Number.parseInt(value, 10);
+  if (Number.isNaN(parsed)) {
+    return DEFAULT_ROUND_LIMIT;
+  }
+  return Math.min(Math.max(parsed, 1), 20);
+}
+
 function createApiClient(baseUrl) {
   const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
   return {
@@ -920,18 +995,6 @@ function deckLabel(value) {
     SISTEMAS: "Sistemas",
     FISICA: "Fisica"
   }[value];
-}
-
-function nextPlayerName(players) {
-  const base = "Jugador";
-  const usedNames = new Set(players.map((item) => item.playerName));
-  for (let index = players.length + 1; index < players.length + 20; index += 1) {
-    const candidate = `${base} ${index}`;
-    if (!usedNames.has(candidate)) {
-      return candidate;
-    }
-  }
-  return `${base} ${Date.now().toString().slice(-4)}`;
 }
 
 createRoot(document.getElementById("root")).render(<App />);
