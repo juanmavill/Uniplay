@@ -67,6 +67,25 @@ jobs:
         working-directory: room-service
         run: mvn -B verify
 
+  game-service:
+    name: Game service
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Verify game-service
+        working-directory: game-service
+        run: mvn -B verify
+
   realtime-service:
     name: Realtime service
     runs-on: ubuntu-latest
