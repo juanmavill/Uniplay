@@ -1,6 +1,9 @@
 package edu.eci.uniplay.room.infrastructure.web.error;
 
 import edu.eci.uniplay.room.application.exception.RoomCodeGenerationException;
+import edu.eci.uniplay.room.application.exception.RoomNotFoundException;
+import edu.eci.uniplay.room.domain.model.DuplicatePlayerException;
+import edu.eci.uniplay.room.domain.model.RoomFullException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -31,6 +34,20 @@ public class GlobalExceptionHandler {
     ProblemDetail handleRoomCodeGeneration(RoomCodeGenerationException exception) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE, exception.getMessage());
         problemDetail.setTitle("Room code unavailable");
+        return problemDetail;
+    }
+
+    @ExceptionHandler(RoomNotFoundException.class)
+    ProblemDetail handleRoomNotFound(RoomNotFoundException exception) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, exception.getMessage());
+        problemDetail.setTitle("Room not found");
+        return problemDetail;
+    }
+
+    @ExceptionHandler({DuplicatePlayerException.class, RoomFullException.class})
+    ProblemDetail handleRoomConflict(RuntimeException exception) {
+        ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
+        problemDetail.setTitle("Room join conflict");
         return problemDetail;
     }
 }
