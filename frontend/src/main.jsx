@@ -206,6 +206,9 @@ function App() {
         client.subscribe(`/topic/rooms/${currentRoomCode}/rounds`, (message) => {
           const payload = safeJson(message.body);
           handleRoundEvent(payload, setChatMessages, player?.playerId);
+          if (eventType(payload) === "ROUND_STARTED") {
+            window.dispatchEvent(new CustomEvent("uniplay:clear-canvas"));
+          }
           if (["ROUND_STARTED", "WORD_GUESSED", "ROUND_FINISHED"].includes(eventType(payload))) {
             window.setTimeout(() => refreshGameState(), 150);
           }
@@ -344,7 +347,7 @@ function App() {
       setTurnNumber(nextTurnNumber);
       setRound(nextState.round || nextRound);
       setGameState(nextState);
-      clearCanvasById("main-drawing-canvas");
+      window.dispatchEvent(new CustomEvent("uniplay:clear-canvas"));
       const drawerName = isAllDrawMode ? "todos" : nextDrawer?.playerName || "turno asignado";
       addSystemMessage(`Ronda ${displayRound} de ${roundLimit}. Dibuja ${drawerName}.`);
     });
@@ -736,6 +739,16 @@ function DrawingBoard({ roomCode, playerId, gatewayBase, canDraw }) {
   }, []);
 
   React.useEffect(() => {
+    const handler = () => {
+      drawingRef.current = false;
+      previousPointRef.current = null;
+      clearCanvas(canvasRef.current);
+    };
+    window.addEventListener("uniplay:clear-canvas", handler);
+    return () => window.removeEventListener("uniplay:clear-canvas", handler);
+  }, []);
+
+  React.useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) {
       return;
@@ -929,10 +942,6 @@ function clearCanvas(canvas) {
     return;
   }
   canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
-}
-
-function clearCanvasById(id) {
-  clearCanvas(document.getElementById(id));
 }
 
 function handleRoundEvent(payload, setChatMessages, currentPlayerId) {
