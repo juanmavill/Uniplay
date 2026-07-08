@@ -1,0 +1,25 @@
+spring:
+  application:
+    name: game-service
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+server:
+  port: ${GAME_SERVICE_PORT:8082}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+uniplay:
+  game:
+    points-per-correct-answer: ${GAME_POINTS_PER_CORRECT_ANSWER:100}
+    session-ttl: ${GAME_SESSION_TTL:PT2H}
