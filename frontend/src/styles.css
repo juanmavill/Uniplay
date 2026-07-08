@@ -284,13 +284,29 @@ h1 {
   overflow: hidden;
 }
 
+.role-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  border: 1px solid #c9d5d8;
+  border-radius: 8px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+
 .segmented button {
   border: 0;
   border-radius: 0;
   background: #ffffff;
 }
 
-.segmented button.selected {
+.role-switch button {
+  border: 0;
+  border-radius: 0;
+}
+
+.segmented button.selected,
+.role-switch button.selected {
   color: #ffffff;
   background: #172026;
 }
@@ -347,6 +363,71 @@ h1 {
     linear-gradient(90deg, #dfe8ea 1px, transparent 1px),
     #ffffff;
   background-size: 24px 24px;
+}
+
+.guess-chat {
+  border: 1px solid #d7e0e3;
+  border-radius: 8px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.chat-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.chat-header .panel-title {
+  margin: 0;
+}
+
+.chat-header span {
+  color: #60727a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chat-messages {
+  display: grid;
+  gap: 8px;
+  min-height: 124px;
+  max-height: 210px;
+  margin: 12px 0;
+  overflow: auto;
+}
+
+.guess-message {
+  display: grid;
+  gap: 6px;
+  border: 1px solid #e3eaec;
+  border-radius: 8px;
+  padding: 10px;
+  background: #fbfcfc;
+}
+
+.guess-message.correct {
+  border-color: rgba(28, 166, 115, 0.38);
+  background: #eefaf5;
+}
+
+.guess-message div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.guess-message span,
+.guess-message p {
+  color: #60727a;
+  font-size: 13px;
+}
+
+.guess-message p {
+  margin: 0;
+  color: #172026;
 }
 
 .answer-bar {
@@ -433,6 +514,11 @@ h1 {
 
   .segmented {
     width: 100%;
+  }
+
+  .chat-header {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .game-toolbar select {

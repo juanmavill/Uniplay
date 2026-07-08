@@ -25,6 +25,8 @@ function App() {
   const [round, setRound] = React.useState(null);
   const [gameState, setGameState] = React.useState(null);
   const [answer, setAnswer] = React.useState("");
+  const [guessMessages, setGuessMessages] = React.useState([]);
+  const [playerRole, setPlayerRole] = React.useState("GUESSER");
   const [deck, setDeck] = React.useState("SISTEMAS");
   const [mode, setMode] = React.useState("CLASSIC");
   const [candidateId, setCandidateId] = React.useState("");
@@ -167,8 +169,20 @@ function App() {
         throw new Error("Unete a una sala antes de responder");
       }
       const result = await api.submitAnswer(currentRoomCode, player.playerId, answer);
+      setGuessMessages((current) => [
+        {
+          id: crypto.randomUUID(),
+          author: player.playerName,
+          text: answer,
+          correct: result.correct,
+          score: result.score
+        },
+        ...current
+      ].slice(0, 10));
       setAnswer("");
-      appendEvent(setEvents, "Respuesta", result);
+      appendEvent(setEvents, "Chat", {
+        message: result.correct ? `${player.playerName} adivino la palabra` : `${player.playerName} intento adivinar`
+      });
       await refreshGameState();
     });
   }
@@ -243,6 +257,13 @@ function App() {
   }
 
   const timer = useRoundTimer(round || gameState?.round);
+  const activeRound = round || gameState?.round;
+  const visibleWord = playerRole === "DRAWER"
+    ? activeRound?.word
+    : activeRound?.word
+      ? "Oculta para quien adivina"
+      : "Inicia una ronda";
+  const isAllDrawMode = mode === "ALL_DRAW" || activeRound?.mode === "ALL_DRAW";
 
   return (
     <main className="app-shell">
@@ -297,6 +318,14 @@ function App() {
             </div>
             <StatusLine label="Sala" value={currentRoomCode || "Sin sala"} />
             <StatusLine label="STOMP" value={stompState} tone={stompState === "online" ? "good" : "muted"} />
+            <div className="role-switch" aria-label="Rol del jugador">
+              <button className={playerRole === "GUESSER" ? "selected" : ""} onClick={() => setPlayerRole("GUESSER")}>
+                Adivina
+              </button>
+              <button className={playerRole === "DRAWER" ? "selected" : ""} onClick={() => setPlayerRole("DRAWER")}>
+                Dibuja
+              </button>
+            </div>
           </section>
 
           <section className="panel">
@@ -344,7 +373,7 @@ function App() {
           <section className="round-strip">
             <div>
               <span className="label">Palabra</span>
-              <strong>{round?.word || gameState?.round?.word || "Inicia una ronda"}</strong>
+              <strong>{visibleWord}</strong>
             </div>
             <div>
               <span className="label">Tiempo</span>
@@ -358,21 +387,40 @@ function App() {
 
           <DrawingBoard roomCode={currentRoomCode} playerId={player?.playerId} gatewayBase={api.baseUrl} />
 
-          <section className="answer-bar">
-            <input
-              value={answer}
-              placeholder="Escribe tu respuesta"
-              onChange={(event) => setAnswer(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  submitAnswer();
-                }
-              }}
-            />
-            <button className="primary" onClick={submitAnswer} disabled={isBusy || !answer.trim()}>
-              <Send size={16} />
-              Enviar
-            </button>
+          <section className="guess-chat">
+            <div className="chat-header">
+              <PanelTitle icon={<Send size={18} />} title="Chat de adivinanza" />
+              <span>{playerRole === "DRAWER" ? "Modo dibujante" : "Modo adivinador"}</span>
+            </div>
+            <div className="chat-messages" aria-live="polite">
+              {guessMessages.length === 0 && <p className="empty">Las respuestas apareceran aqui</p>}
+              {guessMessages.map((message) => (
+                <article key={message.id} className={message.correct ? "guess-message correct" : "guess-message"}>
+                  <div>
+                    <strong>{message.author}</strong>
+                    <span>{message.correct ? `+${message.score}` : "Intento"}</span>
+                  </div>
+                  <p>{message.text}</p>
+                </article>
+              ))}
+            </div>
+            <div className="answer-bar">
+              <input
+                value={answer}
+                placeholder="Escribe tu adivinanza"
+                onChange={(event) => setAnswer(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && playerRole === "GUESSER") {
+                    submitAnswer();
+                  }
+                }}
+                disabled={playerRole === "DRAWER"}
+              />
+              <button className="primary" onClick={submitAnswer} disabled={isBusy || !answer.trim() || playerRole === "DRAWER"}>
+                <Send size={16} />
+                Enviar
+              </button>
+            </div>
           </section>
         </section>
 
@@ -402,14 +450,16 @@ function App() {
             </label>
           </section>
 
-          <section className="panel">
-            <PanelTitle icon={<Vote size={18} />} title="Votacion" />
-            <input value={candidateId} placeholder="ID candidato" onChange={(event) => setCandidateId(event.target.value)} />
-            <button onClick={castVote} disabled={isBusy || !candidateId.trim()}>
-              <Vote size={16} />
-              Votar
-            </button>
-          </section>
+          {isAllDrawMode && (
+            <section className="panel">
+              <PanelTitle icon={<Vote size={18} />} title="Votacion" />
+              <input value={candidateId} placeholder="ID candidato" onChange={(event) => setCandidateId(event.target.value)} />
+              <button onClick={castVote} disabled={isBusy || !candidateId.trim()}>
+                <Vote size={16} />
+                Votar
+              </button>
+            </section>
+          )}
 
           <section className="panel events-panel">
             <PanelTitle icon={<Activity size={18} />} title="Eventos" />
