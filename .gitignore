@@ -11,7 +11,7 @@ desktop.ini
 # Java and Gradle
 .gradle/
 build/
-out/
+/out/
 target/
 
 # Node and frontend
