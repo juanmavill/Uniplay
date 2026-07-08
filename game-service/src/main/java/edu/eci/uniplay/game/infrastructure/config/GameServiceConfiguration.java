@@ -11,12 +11,14 @@ import edu.eci.uniplay.game.application.port.out.WordDeckProvider;
 import edu.eci.uniplay.game.application.service.GetGameStateService;
 import edu.eci.uniplay.game.application.service.StartRoundService;
 import edu.eci.uniplay.game.application.service.SubmitAnswerService;
-import edu.eci.uniplay.game.infrastructure.memory.InMemoryGameSessionRepository;
-import edu.eci.uniplay.game.infrastructure.memory.NoOpDomainEventPublisher;
+import edu.eci.uniplay.game.infrastructure.redis.RedisDomainEventPublisher;
+import edu.eci.uniplay.game.infrastructure.redis.RedisGameSessionRepository;
 import edu.eci.uniplay.game.infrastructure.word.DefaultWordDeckProvider;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.redis.core.StringRedisTemplate;
 
 @Configuration
 @EnableConfigurationProperties(GameProperties.class)
@@ -33,13 +35,17 @@ public class GameServiceConfiguration {
     }
 
     @Bean
-    GameSessionRepository gameSessionRepository() {
-        return new InMemoryGameSessionRepository();
+    GameSessionRepository gameSessionRepository(
+            StringRedisTemplate redisTemplate,
+            ObjectMapper objectMapper,
+            GameProperties gameProperties
+    ) {
+        return new RedisGameSessionRepository(redisTemplate, objectMapper, gameProperties.sessionTtl());
     }
 
     @Bean
-    DomainEventPublisher domainEventPublisher() {
-        return new NoOpDomainEventPublisher();
+    DomainEventPublisher domainEventPublisher(StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
+        return new RedisDomainEventPublisher(redisTemplate, objectMapper);
     }
 
     @Bean
