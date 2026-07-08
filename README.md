@@ -22,6 +22,24 @@ configura, empaqueta y despliega de forma independiente.
 | metrics-service | 8084 | KPIs de negocio y metricas tecnicas |
 | voice-service | 8085 | Tokens de voz, integracion con LiveKit y eventos de voz |
 
+## Entrada publica local
+
+En desarrollo local, el frontend debe consumir el backend por el gateway:
+
+```text
+http://localhost:8080
+```
+
+Ejemplos:
+
+| Operacion | URL publica |
+|---|---|
+| Crear sala | `POST http://localhost:8080/salas` |
+| Iniciar ronda | `POST http://localhost:8080/games/{codigo}/rounds` |
+| Solicitar token de voz | `POST http://localhost:8080/voice/token` |
+| Consultar KPIs | `GET http://localhost:8080/metrics/kpis` |
+| STOMP/SockJS | `http://localhost:8080/ws` |
+
 ## Regla de independencia
 
 Los servicios se comunican exclusivamente por red mediante REST o Redis

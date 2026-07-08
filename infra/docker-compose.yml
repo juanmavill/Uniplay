@@ -1,6 +1,42 @@
 name: uniplay
 
 services:
+  api-gateway:
+    build:
+      context: ../api-gateway
+    container_name: uniplay-api-gateway
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      API_GATEWAY_PORT: 8080
+      ROOM_SERVICE_URI: http://room-service:8081
+      GAME_SERVICE_URI: http://game-service:8082
+      REALTIME_SERVICE_URI: http://realtime-service:8083
+      METRICS_SERVICE_URI: http://metrics-service:8084
+      VOICE_SERVICE_URI: http://voice-service:8085
+      GATEWAY_ALLOWED_ORIGINS: ${GATEWAY_ALLOWED_ORIGINS:-*}
+      GATEWAY_RATE_LIMIT_ENABLED: ${GATEWAY_RATE_LIMIT_ENABLED:-true}
+      GATEWAY_RATE_LIMIT_REQUESTS_PER_WINDOW: ${GATEWAY_RATE_LIMIT_REQUESTS_PER_WINDOW:-120}
+      GATEWAY_RATE_LIMIT_WINDOW: ${GATEWAY_RATE_LIMIT_WINDOW:-PT1M}
+    ports:
+      - "${API_GATEWAY_PORT:-8080}:8080"
+    depends_on:
+      room-service:
+        condition: service_healthy
+      game-service:
+        condition: service_healthy
+      realtime-service:
+        condition: service_healthy
+      metrics-service:
+        condition: service_healthy
+      voice-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+
   game-service:
     build:
       context: ../game-service
