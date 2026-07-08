@@ -3,6 +3,7 @@ package edu.eci.uniplay.room.infrastructure.web;
 import static org.hamcrest.Matchers.endsWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -15,12 +16,15 @@ import java.util.UUID;
 import edu.eci.uniplay.room.application.dto.CreateRoomCommand;
 import edu.eci.uniplay.room.application.dto.JoinRoomCommand;
 import edu.eci.uniplay.room.application.dto.JoinRoomResult;
+import edu.eci.uniplay.room.application.dto.ListPlayersCommand;
+import edu.eci.uniplay.room.application.dto.ListPlayersResult;
 import edu.eci.uniplay.room.application.dto.PlayerResult;
 import edu.eci.uniplay.room.application.dto.RoomCreatedResult;
 import edu.eci.uniplay.room.application.exception.RoomCodeGenerationException;
 import edu.eci.uniplay.room.application.exception.RoomNotFoundException;
 import edu.eci.uniplay.room.application.port.in.CreateRoomUseCase;
 import edu.eci.uniplay.room.application.port.in.JoinRoomUseCase;
+import edu.eci.uniplay.room.application.port.in.ListPlayersUseCase;
 import edu.eci.uniplay.room.domain.model.DuplicatePlayerException;
 import edu.eci.uniplay.room.domain.model.PlayerName;
 import org.junit.jupiter.api.Test;
@@ -42,6 +46,9 @@ class RoomControllerTest {
 
     @MockBean
     private JoinRoomUseCase joinRoomUseCase;
+
+    @MockBean
+    private ListPlayersUseCase listPlayersUseCase;
 
     @Test
     void createsRoom() throws Exception {
@@ -141,5 +148,24 @@ class RoomControllerTest {
                         .content("{\"playerName\":\"Ana\"}"))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.title").value("Room join conflict"));
+    }
+
+    @Test
+    void listsPlayers() throws Exception {
+        when(listPlayersUseCase.listPlayers(any(ListPlayersCommand.class))).thenReturn(new ListPlayersResult(
+                UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                "ABC123",
+                List.of(
+                        new PlayerResult(UUID.fromString("22222222-2222-2222-2222-222222222222"), "Ana"),
+                        new PlayerResult(UUID.fromString("33333333-3333-3333-3333-333333333333"), "Luis")
+                )
+        ));
+
+        mockMvc.perform(get("/salas/ABC123/jugadores"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roomId").value("11111111-1111-1111-1111-111111111111"))
+                .andExpect(jsonPath("$.code").value("ABC123"))
+                .andExpect(jsonPath("$.players[0].playerName").value("Ana"))
+                .andExpect(jsonPath("$.players[1].playerName").value("Luis"));
     }
 }
