@@ -40,16 +40,13 @@ public class CreateRoomService implements CreateRoomUseCase {
     @Override
     public RoomCreatedResult createRoom(CreateRoomCommand command) {
         int maxPlayers = roomCreationPolicy.resolveMaxPlayers(command.maxPlayers());
-        RoomCode code = generateUniqueCode();
-        Instant createdAt = clock.instant();
-        Room room = Room.create(RoomId.newId(), code, maxPlayers, createdAt);
+        Room room = createRoomWithUniqueCode(maxPlayers);
 
-        roomRepository.save(room);
         domainEventPublisher.publishRoomCreated(new RoomCreatedEvent(
                 room.id().value(),
                 room.code().value(),
                 room.maxPlayers(),
-                createdAt
+                room.createdAt()
         ));
 
         return new RoomCreatedResult(
@@ -61,13 +58,14 @@ public class CreateRoomService implements CreateRoomUseCase {
         );
     }
 
-    private RoomCode generateUniqueCode() {
+    private Room createRoomWithUniqueCode(int maxPlayers) {
         int maxAttempts = roomCreationPolicy.maxCodeGenerationAttempts();
 
         for (int attempt = 0; attempt < maxAttempts; attempt++) {
             RoomCode candidate = roomCodeGenerator.generate();
-            if (!roomRepository.existsByCode(candidate)) {
-                return candidate;
+            Room room = Room.create(RoomId.newId(), candidate, maxPlayers, clock.instant());
+            if (roomRepository.saveIfCodeAvailable(room)) {
+                return room;
             }
         }
 

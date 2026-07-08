@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -60,7 +61,7 @@ class CreateRoomServiceTest {
     void createsRoomWithGeneratedUniqueCode() {
         RoomCode code = new RoomCode("ABC123");
         when(roomCodeGenerator.generate()).thenReturn(code);
-        when(roomRepository.existsByCode(code)).thenReturn(false);
+        when(roomRepository.saveIfCodeAvailable(any(Room.class))).thenReturn(true);
 
         RoomCreatedResult result = createRoomService.createRoom(new CreateRoomCommand(null));
 
@@ -71,7 +72,7 @@ class CreateRoomServiceTest {
         assertThat(result.roomId()).isNotNull();
 
         ArgumentCaptor<Room> roomCaptor = ArgumentCaptor.forClass(Room.class);
-        verify(roomRepository).save(roomCaptor.capture());
+        verify(roomRepository).saveIfCodeAvailable(roomCaptor.capture());
         assertThat(roomCaptor.getValue().code()).isEqualTo(code);
 
         ArgumentCaptor<RoomCreatedEvent> eventCaptor = ArgumentCaptor.forClass(RoomCreatedEvent.class);
@@ -86,27 +87,25 @@ class CreateRoomServiceTest {
         RoomCode duplicatedCode = new RoomCode("ABC123");
         RoomCode uniqueCode = new RoomCode("XYZ789");
         when(roomCodeGenerator.generate()).thenReturn(duplicatedCode, uniqueCode);
-        when(roomRepository.existsByCode(duplicatedCode)).thenReturn(true);
-        when(roomRepository.existsByCode(uniqueCode)).thenReturn(false);
+        when(roomRepository.saveIfCodeAvailable(any(Room.class))).thenReturn(false, true);
 
         RoomCreatedResult result = createRoomService.createRoom(new CreateRoomCommand(8));
 
         assertThat(result.code()).isEqualTo("XYZ789");
         assertThat(result.maxPlayers()).isEqualTo(8);
-        verify(roomRepository).save(any(Room.class));
+        verify(roomRepository, times(2)).saveIfCodeAvailable(any(Room.class));
     }
 
     @Test
     void failsWhenUniqueCodeCannotBeGenerated() {
         RoomCode duplicatedCode = new RoomCode("ABC123");
         when(roomCodeGenerator.generate()).thenReturn(duplicatedCode);
-        when(roomRepository.existsByCode(duplicatedCode)).thenReturn(true);
+        when(roomRepository.saveIfCodeAvailable(any(Room.class))).thenReturn(false);
 
         assertThatThrownBy(() -> createRoomService.createRoom(new CreateRoomCommand(null)))
                 .isInstanceOf(RoomCodeGenerationException.class)
                 .hasMessage("could not generate a unique room code after 3 attempts");
 
-        verify(roomRepository, never()).save(any(Room.class));
         verify(domainEventPublisher, never()).publishRoomCreated(any(RoomCreatedEvent.class));
     }
 }
