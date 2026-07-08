@@ -9,12 +9,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import edu.eci.uniplay.room.application.dto.CreateRoomCommand;
+import edu.eci.uniplay.room.application.dto.JoinRoomCommand;
+import edu.eci.uniplay.room.application.dto.JoinRoomResult;
+import edu.eci.uniplay.room.application.dto.PlayerResult;
 import edu.eci.uniplay.room.application.dto.RoomCreatedResult;
 import edu.eci.uniplay.room.application.exception.RoomCodeGenerationException;
+import edu.eci.uniplay.room.application.exception.RoomNotFoundException;
 import edu.eci.uniplay.room.application.port.in.CreateRoomUseCase;
+import edu.eci.uniplay.room.application.port.in.JoinRoomUseCase;
+import edu.eci.uniplay.room.domain.model.DuplicatePlayerException;
+import edu.eci.uniplay.room.domain.model.PlayerName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -31,6 +39,9 @@ class RoomControllerTest {
 
     @MockBean
     private CreateRoomUseCase createRoomUseCase;
+
+    @MockBean
+    private JoinRoomUseCase joinRoomUseCase;
 
     @Test
     void createsRoom() throws Exception {
@@ -72,5 +83,63 @@ class RoomControllerTest {
                         .content("{}"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.title").value("Room code unavailable"));
+    }
+
+    @Test
+    void joinsRoom() throws Exception {
+        when(joinRoomUseCase.joinRoom(any(JoinRoomCommand.class))).thenReturn(new JoinRoomResult(
+                UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                "ABC123",
+                UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                "Ana",
+                List.of(new PlayerResult(
+                        UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                        "Ana"
+                )),
+                Instant.parse("2026-07-07T12:30:00Z")
+        ));
+
+        mockMvc.perform(post("/salas/ABC123/jugadores")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\":\"Ana\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roomId").value("11111111-1111-1111-1111-111111111111"))
+                .andExpect(jsonPath("$.code").value("ABC123"))
+                .andExpect(jsonPath("$.playerId").value("22222222-2222-2222-2222-222222222222"))
+                .andExpect(jsonPath("$.playerName").value("Ana"))
+                .andExpect(jsonPath("$.players[0].playerName").value("Ana"))
+                .andExpect(jsonPath("$.joinedAt").value("2026-07-07T12:30:00Z"));
+    }
+
+    @Test
+    void rejectsInvalidPlayerName() throws Exception {
+        mockMvc.perform(post("/salas/ABC123/jugadores")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\":\"A\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.title").value("Invalid room request"));
+    }
+
+    @Test
+    void returnsNotFoundWhenJoiningUnknownRoom() throws Exception {
+        when(joinRoomUseCase.joinRoom(any(JoinRoomCommand.class))).thenThrow(new RoomNotFoundException("ABC123"));
+
+        mockMvc.perform(post("/salas/ABC123/jugadores")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\":\"Ana\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.title").value("Room not found"));
+    }
+
+    @Test
+    void returnsConflictWhenPlayerAlreadyJoined() throws Exception {
+        when(joinRoomUseCase.joinRoom(any(JoinRoomCommand.class)))
+                .thenThrow(new DuplicatePlayerException(new PlayerName("Ana")));
+
+        mockMvc.perform(post("/salas/ABC123/jugadores")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"playerName\":\"Ana\"}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.title").value("Room join conflict"));
     }
 }
