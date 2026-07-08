@@ -11,6 +11,7 @@ services:
       ROOM_SERVICE_URI: http://room-service:8081
       GAME_SERVICE_URI: http://game-service:8082
       REALTIME_SERVICE_URI: http://realtime-service:8083
+      REALTIME_WEBSOCKET_URI: ws://realtime-service:8083
       METRICS_SERVICE_URI: http://metrics-service:8084
       VOICE_SERVICE_URI: http://voice-service:8085
       GATEWAY_ALLOWED_ORIGINS: ${GATEWAY_ALLOWED_ORIGINS:-*}
@@ -36,6 +37,16 @@ services:
       timeout: 3s
       retries: 5
       start_period: 30s
+
+  frontend:
+    build:
+      context: ../frontend
+    container_name: uniplay-frontend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
 
   game-service:
     build:

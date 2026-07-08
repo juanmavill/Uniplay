@@ -21,10 +21,17 @@ configura, empaqueta y despliega de forma independiente.
 | realtime-service | 8083 | WebSocket STOMP para canvas y chat |
 | metrics-service | 8084 | KPIs de negocio y metricas tecnicas |
 | voice-service | 8085 | Tokens de voz, integracion con LiveKit y eventos de voz |
+| frontend | 5173 | Cliente React para sala, juego, voz y metricas |
 
 ## Entrada publica local
 
-En desarrollo local, el frontend debe consumir el backend por el gateway:
+En desarrollo local, el frontend corre en:
+
+```text
+http://localhost:5173
+```
+
+El frontend consume el backend por el gateway:
 
 ```text
 http://localhost:8080
