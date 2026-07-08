@@ -1,0 +1,72 @@
+# voice-service
+
+Genera tokens de acceso para el canal de voz de UniPlay y encapsula la
+integracion con LiveKit. El frontend nunca consume credenciales ni la API
+administrativa de LiveKit directamente.
+
+## Endpoints
+
+### Unirse a voz
+
+```http
+POST /voice/token
+Content-Type: application/json
+
+{
+  "roomCode": "ABC123",
+  "playerId": "22222222-2222-2222-2222-222222222222",
+  "playerName": "Juan"
+}
+```
+
+Respuesta exitosa:
+
+```http
+201 Created
+```
+
+```json
+{
+  "roomCode": "ABC123",
+  "voiceRoomName": "uniplay-ABC123",
+  "participantIdentity": "22222222-2222-2222-2222-222222222222",
+  "participantName": "Juan",
+  "livekitUrl": "ws://localhost:7880",
+  "token": "jwt",
+  "expiresAt": "2026-07-07T12:30:00Z"
+}
+```
+
+El canal de voz se crea on-demand cuando el primer cliente usa el token para
+conectarse a LiveKit.
+
+## LiveKit local
+
+El `docker-compose.yml` levanta `livekit/livekit-server` en modo desarrollo:
+
+```text
+API key: devkey
+API secret: secret
+```
+
+Estos valores son solo para desarrollo local. En AWS o Azure deben definirse
+con variables de entorno y secretos del entorno de despliegue.
+
+## Configuracion
+
+| Variable | Valor por defecto |
+|---|---|
+| `VOICE_SERVICE_PORT` | `8085` |
+| `LIVEKIT_URL` | `ws://localhost:7880` |
+| `LIVEKIT_PUBLIC_URL` | `ws://localhost:7880` |
+| `LIVEKIT_API_KEY` | `devkey` |
+| `LIVEKIT_API_SECRET` | `secret` |
+| `VOICE_TOKEN_TTL` | `PT30M` |
+
+## Verificacion
+
+```bash
+mvn verify
+```
+
+El build falla si la cobertura de lineas cae por debajo del 70%.

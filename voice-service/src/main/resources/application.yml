@@ -1,0 +1,24 @@
+spring:
+  application:
+    name: voice-service
+
+server:
+  port: ${VOICE_SERVICE_PORT:8085}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+uniplay:
+  voice:
+    livekit-url: ${LIVEKIT_URL:ws://localhost:7880}
+    public-url: ${LIVEKIT_PUBLIC_URL:ws://localhost:7880}
+    api-key: ${LIVEKIT_API_KEY:devkey}
+    api-secret: ${LIVEKIT_API_SECRET:secret}
+    token-ttl: ${VOICE_TOKEN_TTL:PT30M}

@@ -1,0 +1,6 @@
+uniplay:
+  voice:
+    livekit-url: ${LIVEKIT_URL}
+    public-url: ${LIVEKIT_PUBLIC_URL}
+    api-key: ${LIVEKIT_API_KEY}
+    api-secret: ${LIVEKIT_API_SECRET}
