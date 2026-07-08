@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: api-gateway
+
+server:
+  port: ${API_GATEWAY_PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+uniplay:
+  gateway:
+    room-service-uri: ${ROOM_SERVICE_URI:http://localhost:8081}
+    game-service-uri: ${GAME_SERVICE_URI:http://localhost:8082}
+    realtime-service-uri: ${REALTIME_SERVICE_URI:http://localhost:8083}
+    metrics-service-uri: ${METRICS_SERVICE_URI:http://localhost:8084}
+    voice-service-uri: ${VOICE_SERVICE_URI:http://localhost:8085}
+    allowed-origins: ${GATEWAY_ALLOWED_ORIGINS:*}
+    rate-limit:
+      enabled: ${GATEWAY_RATE_LIMIT_ENABLED:true}
+      requests-per-window: ${GATEWAY_RATE_LIMIT_REQUESTS_PER_WINDOW:120}
+      window: ${GATEWAY_RATE_LIMIT_WINDOW:PT1M}
