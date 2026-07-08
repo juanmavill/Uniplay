@@ -1,6 +1,28 @@
 name: uniplay
 
 services:
+  realtime-service:
+    build:
+      context: ../realtime-service
+    container_name: uniplay-realtime-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REALTIME_SERVICE_PORT: 8083
+      REALTIME_ALLOWED_ORIGINS: "*"
+    ports:
+      - "${REALTIME_SERVICE_PORT:-8083}:8083"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+
   room-service:
     build:
       context: ../room-service
