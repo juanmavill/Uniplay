@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.eci.uniplay.realtime.application.dto.RoundEventMessage;
 import edu.eci.uniplay.realtime.application.port.out.RoundEventBroker;
@@ -55,7 +56,7 @@ public class RedisRoundEventSubscriber implements MessageListener {
                 "ROUND_STARTED",
                 event.roomCode(),
                 UUID.fromString(event.roundId()),
-                event.word(),
+                null,
                 "ACTIVE",
                 null,
                 null,
@@ -138,10 +139,10 @@ public class RedisRoundEventSubscriber implements MessageListener {
         );
     }
 
+    @JsonIgnoreProperties(ignoreUnknown = true)
     private record RoundStartedPayload(
             String roomCode,
             String roundId,
-            String word,
             String startedAt,
             String endsAt,
             String occurredAt
