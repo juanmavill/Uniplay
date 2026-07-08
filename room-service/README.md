@@ -26,6 +26,31 @@ Content-Type: application/json
 }
 ```
 
+### Listar jugadores de una sala
+
+```http
+GET /salas/{codigo}/jugadores
+```
+
+Respuesta exitosa:
+
+```http
+200 OK
+```
+
+```json
+{
+  "roomId": "11111111-1111-1111-1111-111111111111",
+  "code": "ABC123",
+  "players": [
+    {
+      "playerId": "22222222-2222-2222-2222-222222222222",
+      "playerName": "Ana"
+    }
+  ]
+}
+```
+
 Respuesta exitosa:
 
 ```http
@@ -73,6 +98,10 @@ Location: /salas/{codigo}
 |---|---|
 | `sala.creada` | Despues de reservar el codigo y persistir la sala |
 | `jugador.conectado` | Despues de agregar el jugador y persistir la sala |
+
+HU-03 se apoya en `jugador.conectado` para propagacion en tiempo real. Este
+servicio mantiene el estado consultable por REST; `realtime-service` sera quien
+traduzca eventos Redis a mensajes STOMP hacia los navegadores.
 
 ## Persistencia
 
