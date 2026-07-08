@@ -1,6 +1,6 @@
 :root {
   color: #172026;
-  background: #eef3f4;
+  background: #e9f0f2;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -16,9 +16,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    linear-gradient(135deg, rgba(15, 139, 141, 0.08), transparent 34%),
-    linear-gradient(220deg, rgba(224, 93, 67, 0.1), transparent 28%),
-    #eef3f4;
+    linear-gradient(180deg, #f7fafb 0, #e6eef0 42%, #dbe8ea 100%);
 }
 
 button,
@@ -33,7 +31,7 @@ button {
   justify-content: center;
   gap: 8px;
   min-height: 40px;
-  border: 1px solid #c9d5d8;
+  border: 1px solid #b8c9ce;
   border-radius: 8px;
   padding: 0 14px;
   color: #172026;
@@ -60,7 +58,7 @@ input,
 select {
   width: 100%;
   min-height: 40px;
-  border: 1px solid #c9d5d8;
+  border: 1px solid #b8c9ce;
   border-radius: 8px;
   padding: 0 11px;
   color: #172026;
@@ -74,28 +72,6 @@ button:focus-visible {
   outline-offset: 1px;
 }
 
-.app-shell {
-  min-height: 100vh;
-  padding: 20px;
-}
-
-.topbar {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 16px;
-  max-width: 1480px;
-  margin: 0 auto 16px;
-}
-
-.eyebrow {
-  margin: 0 0 4px;
-  color: #0f8b8d;
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-
 h1,
 h2,
 p {
@@ -103,59 +79,89 @@ p {
 }
 
 h1 {
-  font-size: 34px;
-  line-height: 1.1;
+  font-size: 32px;
+  line-height: 1.05;
 }
 
-.gateway-field {
-  width: min(360px, 100%);
+.app-shell {
+  min-height: 100vh;
+  padding: 16px;
 }
 
-.gateway-field label,
-.form-grid label,
-.label {
-  display: grid;
-  gap: 6px;
-  color: #5c6b70;
-  font-size: 12px;
-  font-weight: 700;
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1500px;
+  margin: 0 auto 14px;
+}
+
+.eyebrow {
+  margin: 0 0 4px;
+  color: #0f8b8d;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0;
   text-transform: uppercase;
 }
 
+.room-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 46px;
+  border: 1px solid #b8c9ce;
+  border-radius: 8px;
+  padding: 4px 5px 4px 14px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(23, 32, 38, 0.08);
+}
+
+.room-pill span {
+  min-width: 86px;
+  font-size: 18px;
+  font-weight: 900;
+}
+
 .alert {
-  max-width: 1480px;
-  margin: 0 auto 16px;
-  border: 1px solid #e05d43;
+  max-width: 1500px;
+  margin: 0 auto 14px;
+  border: 1px solid #d66b45;
   border-radius: 8px;
   padding: 12px 14px;
   color: #762817;
   background: #fff2ee;
 }
 
-.workspace {
+.game-shell {
   display: grid;
-  grid-template-columns: minmax(260px, 300px) minmax(420px, 1fr) minmax(260px, 320px);
-  gap: 16px;
-  max-width: 1480px;
+  grid-template-columns: minmax(230px, 280px) minmax(440px, 1fr) minmax(280px, 350px);
+  gap: 14px;
+  max-width: 1500px;
   margin: 0 auto;
   align-items: start;
 }
 
-.side-panel {
+.left-rail,
+.right-rail,
+.stage {
   display: grid;
-  gap: 16px;
+  gap: 14px;
 }
 
 .panel,
+.round-banner,
+.match-controls,
 .canvas-shell {
-  border: 1px solid #d7e0e3;
+  border: 1px solid #ccdade;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 14px 30px rgba(23, 32, 38, 0.08);
+  background: #ffffff;
+  box-shadow: 0 12px 28px rgba(23, 32, 38, 0.08);
 }
 
 .panel {
-  padding: 16px;
+  padding: 14px;
 }
 
 .panel-title {
@@ -163,7 +169,7 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .panel-title > div {
@@ -176,16 +182,23 @@ h1 {
   font-size: 16px;
 }
 
-.form-grid {
+.room-panel {
   display: grid;
-  grid-template-columns: 1fr 112px;
   gap: 10px;
+}
+
+.room-panel label {
+  display: grid;
+  gap: 6px;
+  color: #5c6b70;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
 }
 
 .button-row {
   display: flex;
   gap: 8px;
-  margin-top: 12px;
   flex-wrap: wrap;
 }
 
@@ -199,18 +212,14 @@ h1 {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  border-top: 1px solid #e6ecee;
-  margin-top: 12px;
+  border-top: 1px solid #e3ebed;
   padding-top: 10px;
 }
 
 .status-line span,
 .status-line strong,
 .empty,
-.event-item span,
-.voice-status small,
-.player-item small,
-.metric span {
+.voice-status small {
   color: #60727a;
   font-size: 13px;
 }
@@ -223,8 +232,7 @@ h1 {
   color: #60727a;
 }
 
-.player-list,
-.event-list {
+.player-list {
   display: grid;
   gap: 8px;
 }
@@ -232,65 +240,87 @@ h1 {
 .player-item {
   justify-content: space-between;
   width: 100%;
-  min-height: 44px;
+  min-height: 46px;
+  border-color: #d9e4e7;
+  background: #fbfcfc;
 }
 
-.kpi-grid {
+.player-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-item strong {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.metric {
-  border: 1px solid #e0e7e9;
+  place-items: center;
+  min-width: 36px;
+  height: 28px;
   border-radius: 8px;
-  padding: 12px;
-  background: #f9fbfb;
+  color: #172026;
+  background: #eef4f5;
 }
 
-.metric strong {
-  display: block;
-  margin-top: 6px;
-  font-size: 24px;
+.player-item.drawing {
+  border-color: #f4b740;
+  background: #fff8e5;
 }
 
-.play-area {
+.player-item.drawing strong {
+  color: #762817;
+  background: #fbdc89;
+}
+
+.round-banner {
   display: grid;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 220px) 120px;
+  gap: 12px;
+  padding: 16px;
 }
 
-.game-toolbar,
-.round-strip,
-.answer-bar,
-.canvas-tools {
+.round-banner div {
+  min-width: 0;
+}
+
+.round-banner span {
+  display: block;
+  margin-bottom: 5px;
+  color: #60727a;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.round-banner strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 26px;
+  line-height: 1.08;
+}
+
+.match-controls,
+.canvas-tools,
+.answer-bar {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.game-toolbar {
+.match-controls {
   flex-wrap: wrap;
+  padding: 12px;
 }
 
-.game-toolbar select {
-  max-width: 190px;
+.match-controls select {
+  max-width: 180px;
 }
 
 .segmented {
   display: inline-grid;
   grid-template-columns: repeat(2, minmax(120px, 1fr));
-  border: 1px solid #c9d5d8;
+  border: 1px solid #b8c9ce;
   border-radius: 8px;
-  overflow: hidden;
-}
-
-.role-switch {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0;
-  border: 1px solid #c9d5d8;
-  border-radius: 8px;
-  margin-top: 12px;
   overflow: hidden;
 }
 
@@ -300,30 +330,9 @@ h1 {
   background: #ffffff;
 }
 
-.role-switch button {
-  border: 0;
-  border-radius: 0;
-}
-
-.segmented button.selected,
-.role-switch button.selected {
+.segmented button.selected {
   color: #ffffff;
   background: #172026;
-}
-
-.round-strip {
-  display: grid;
-  grid-template-columns: 1fr 110px 120px;
-  border: 1px solid #d7e0e3;
-  border-radius: 8px;
-  padding: 14px;
-  background: #ffffff;
-}
-
-.round-strip strong {
-  display: block;
-  margin-top: 4px;
-  font-size: 22px;
 }
 
 .canvas-shell {
@@ -332,8 +341,12 @@ h1 {
 
 .canvas-tools {
   justify-content: space-between;
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-bottom: 1px solid #e1e8ea;
+}
+
+.canvas-tools .panel-title {
+  margin: 0;
 }
 
 .tool-group {
@@ -351,87 +364,83 @@ h1 {
   width: 120px;
 }
 
+.canvas-frame {
+  position: relative;
+}
+
 .drawing-canvas {
   display: block;
   width: 100%;
-  height: min(58vh, 520px);
-  min-height: 360px;
+  height: min(62vh, 570px);
+  min-height: 400px;
   touch-action: none;
   cursor: crosshair;
   background:
-    linear-gradient(#dfe8ea 1px, transparent 1px),
-    linear-gradient(90deg, #dfe8ea 1px, transparent 1px),
+    linear-gradient(#e5ecee 1px, transparent 1px),
+    linear-gradient(90deg, #e5ecee 1px, transparent 1px),
     #ffffff;
-  background-size: 24px 24px;
+  background-size: 22px 22px;
 }
 
-.guess-chat {
-  border: 1px solid #d7e0e3;
+.canvas-lock {
+  position: absolute;
+  inset: auto 16px 16px auto;
+  border: 1px solid #b8c9ce;
   border-radius: 8px;
-  padding: 14px;
-  background: #ffffff;
-}
-
-.chat-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.chat-header .panel-title {
-  margin: 0;
-}
-
-.chat-header span {
+  padding: 8px 10px;
   color: #60727a;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.chat-panel {
+  display: grid;
+  min-height: 430px;
 }
 
 .chat-messages {
-  display: grid;
+  display: flex;
+  flex-direction: column-reverse;
   gap: 8px;
-  min-height: 124px;
-  max-height: 210px;
-  margin: 12px 0;
+  min-height: 260px;
+  max-height: 420px;
   overflow: auto;
+  padding-right: 2px;
 }
 
-.guess-message {
+.chat-message {
   display: grid;
-  gap: 6px;
-  border: 1px solid #e3eaec;
+  gap: 5px;
+  border: 1px solid #dfe8eb;
   border-radius: 8px;
   padding: 10px;
   background: #fbfcfc;
 }
 
-.guess-message.correct {
-  border-color: rgba(28, 166, 115, 0.38);
-  background: #eefaf5;
-}
-
-.guess-message div {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.guess-message span,
-.guess-message p {
-  color: #60727a;
+.chat-message strong {
   font-size: 13px;
 }
 
-.guess-message p {
-  margin: 0;
+.chat-message p {
   color: #172026;
+  font-size: 14px;
+}
+
+.chat-message.system {
+  border-color: #d7e6e9;
+  color: #60727a;
+  background: #f4f8f9;
+}
+
+.chat-message.system.success {
+  border-color: rgba(28, 166, 115, 0.4);
+  background: #eefaf5;
 }
 
 .answer-bar {
   align-items: stretch;
+  margin-top: 12px;
 }
 
 .answer-bar input {
@@ -469,63 +478,62 @@ h1 {
   min-height: 18px;
 }
 
-.events-panel {
-  max-height: 360px;
-  overflow: auto;
+.vote-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
-.event-item {
-  display: grid;
-  gap: 4px;
-  border: 1px solid #e3eaec;
-  border-radius: 8px;
-  padding: 10px;
-  background: #fbfcfc;
+.vote-list button {
+  justify-content: flex-start;
+}
+
+.vote-list button.selected {
+  border-color: #0f8b8d;
+  background: #eefafa;
 }
 
 @media (max-width: 1120px) {
-  .workspace {
+  .game-shell {
     grid-template-columns: 1fr;
   }
 
-  .side-panel {
+  .left-rail,
+  .right-rail {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 720px) {
   .app-shell {
-    padding: 12px;
+    padding: 10px;
   }
 
   .topbar,
-  .game-toolbar,
-  .answer-bar,
-  .canvas-tools {
+  .match-controls,
+  .canvas-tools,
+  .answer-bar {
     align-items: stretch;
     flex-direction: column;
   }
 
-  .side-panel,
-  .form-grid,
-  .round-strip {
+  .left-rail,
+  .right-rail,
+  .round-banner {
     grid-template-columns: 1fr;
   }
 
-  .segmented {
+  .segmented,
+  .match-controls select {
     width: 100%;
-  }
-
-  .chat-header {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .game-toolbar select {
     max-width: none;
   }
 
+  .drawing-canvas {
+    min-height: 330px;
+  }
+
   h1 {
-    font-size: 28px;
+    font-size: 26px;
   }
 }
