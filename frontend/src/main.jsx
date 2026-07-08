@@ -8,12 +8,18 @@ import "./styles.css";
 
 const DECKS = ["GENERAL", "MATEMATICAS", "SISTEMAS", "FISICA"];
 const MODES = ["CLASSIC", "ALL_DRAW"];
+const INITIAL_PARAMS = new URLSearchParams(window.location.search);
 
 function App() {
   const [gatewayUrl] = React.useState(() => localStorage.getItem("uniplay.gatewayUrl") || "");
   const [room, setRoom] = React.useState(null);
-  const [roomCodeInput, setRoomCodeInput] = React.useState("");
-  const [playerName, setPlayerName] = React.useState(() => localStorage.getItem("uniplay.playerName") || "Jugador");
+  const [roomCodeInput, setRoomCodeInput] = React.useState(() => INITIAL_PARAMS.get("room")?.toUpperCase() || "");
+  const [playerName, setPlayerName] = React.useState(() => (
+    INITIAL_PARAMS.get("name")
+    || sessionStorage.getItem("uniplay.playerName")
+    || localStorage.getItem("uniplay.playerName")
+    || "Jugador"
+  ));
   const [player, setPlayer] = React.useState(null);
   const [players, setPlayers] = React.useState([]);
   const [round, setRound] = React.useState(null);
@@ -29,19 +35,22 @@ function App() {
   const [isBusy, setIsBusy] = React.useState(false);
   const [error, setError] = React.useState("");
   const livekitRoomRef = React.useRef(null);
+  const shouldAutoJoinRef = React.useRef(INITIAL_PARAMS.get("join") === "1");
 
   const api = React.useMemo(() => createApiClient(gatewayUrl), [gatewayUrl]);
   const currentRoomCode = room?.code || roomCodeInput.trim().toUpperCase();
-  const activeRound = round || gameState?.round;
+  const activeRound = gameState?.round || round;
+  const roundIsActive = activeRound?.status === "ACTIVE";
   const timer = useRoundTimer(activeRound);
   const scores = React.useMemo(() => indexScores(gameState?.scores), [gameState]);
-  const isAllDrawMode = mode === "ALL_DRAW" || activeRound?.mode === "ALL_DRAW";
+  const activeMode = activeRound?.mode || mode;
+  const isAllDrawMode = activeMode === "ALL_DRAW";
   const turnDrawer = players.length > 0 ? players[turnNumber % players.length] : null;
   const currentDrawer = activeRound?.drawerId
     ? players.find((item) => item.playerId === activeRound.drawerId) || turnDrawer
     : turnDrawer;
-  const isDrawer = Boolean(player?.playerId && activeRound && (isAllDrawMode || currentDrawer?.playerId === player.playerId));
-  const canGuess = Boolean(player?.playerId && activeRound && !isDrawer);
+  const isDrawer = Boolean(player?.playerId && roundIsActive && (isAllDrawMode || currentDrawer?.playerId === player.playerId));
+  const canGuess = Boolean(player?.playerId && roundIsActive && !isDrawer);
   const visibleWord = activeRound?.word
     ? isDrawer
       ? activeRound.word
@@ -49,8 +58,16 @@ function App() {
     : "------";
 
   React.useEffect(() => {
+    sessionStorage.setItem("uniplay.playerName", playerName);
     localStorage.setItem("uniplay.playerName", playerName);
   }, [playerName]);
+
+  React.useEffect(() => {
+    if (shouldAutoJoinRef.current && currentRoomCode && !player?.playerId) {
+      shouldAutoJoinRef.current = false;
+      joinRoom();
+    }
+  }, [currentRoomCode, player?.playerId]);
 
   React.useEffect(() => {
     if (players.length > 0 && turnNumber >= players.length) {
@@ -95,7 +112,11 @@ function App() {
       onConnect: () => {
         setStompState("online");
         client.subscribe(`/topic/rooms/${currentRoomCode}/rounds`, (message) => {
-          handleRoundEvent(safeJson(message.body), setChatMessages, player?.playerId);
+          const payload = safeJson(message.body);
+          handleRoundEvent(payload, setChatMessages, player?.playerId);
+          if (["ROUND_STARTED", "WORD_GUESSED", "ROUND_FINISHED"].includes(eventType(payload))) {
+            window.setTimeout(() => refreshGameState(), 150);
+          }
         });
         client.subscribe(`/topic/rooms/${currentRoomCode}/voice`, (message) => {
           handleVoiceEvent(safeJson(message.body), setVoice);
@@ -112,6 +133,23 @@ function App() {
     client.activate();
     return () => client.deactivate();
   }, [api, currentRoomCode, player?.playerId]);
+
+  React.useEffect(() => {
+    if (!roundIsActive || !activeRound?.endsAt || !activeRound?.roundId || !currentRoomCode) {
+      return undefined;
+    }
+    const delay = Math.max(0, new Date(activeRound.endsAt).getTime() - Date.now()) + 400;
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        await api.expireRound(currentRoomCode, activeRound.roundId);
+        addSystemMessage("Tiempo agotado");
+        await refreshGameState();
+      } catch {
+        await refreshGameState();
+      }
+    }, delay);
+    return () => window.clearTimeout(timeoutId);
+  }, [api, currentRoomCode, activeRound?.roundId, activeRound?.endsAt, roundIsActive]);
 
   async function runAction(action) {
     setIsBusy(true);
@@ -137,6 +175,7 @@ function App() {
       const createdRoom = await api.createRoom(21);
       setRoom(createdRoom);
       setRoomCodeInput(createdRoom.code);
+      setPlayer(null);
       setPlayers([]);
       setRound(null);
       setGameState(null);
@@ -177,10 +216,26 @@ function App() {
     });
   }
 
+  function openPlayerTab() {
+    if (!currentRoomCode) {
+      setError("Crea o unete a una sala antes de abrir otro jugador");
+      return;
+    }
+    const nextName = nextPlayerName(players);
+    const targetUrl = new URL(window.location.href);
+    targetUrl.searchParams.set("room", currentRoomCode);
+    targetUrl.searchParams.set("name", nextName);
+    targetUrl.searchParams.set("join", "1");
+    window.open(targetUrl.toString(), "_blank", "noopener,noreferrer");
+  }
+
   async function startRound() {
     await runAction(async () => {
       if (!currentRoomCode) {
         throw new Error("No hay sala activa");
+      }
+      if (roundIsActive) {
+        throw new Error("La ronda actual sigue activa");
       }
       const nextTurnNumber = activeRound && players.length > 0 ? (turnNumber + 1) % players.length : turnNumber;
       const nextDrawer = players.length > 0 ? players[nextTurnNumber] : null;
@@ -190,9 +245,10 @@ function App() {
         deck,
         mode === "ALL_DRAW" ? null : nextDrawer?.playerId
       );
+      const nextState = await api.getGameState(currentRoomCode, player?.playerId);
       setTurnNumber(nextTurnNumber);
-      setRound(nextRound);
-      setGameState(null);
+      setRound(nextState.round || nextRound);
+      setGameState(nextState);
       clearCanvasById("main-drawing-canvas");
       const drawerName = isAllDrawMode ? "todos" : nextDrawer?.playerName || "turno asignado";
       addSystemMessage(`Nueva ronda. Dibuja ${drawerName}.`);
@@ -239,6 +295,7 @@ function App() {
     }
     const state = await api.getGameState(currentRoomCode, player?.playerId);
     setGameState(state);
+    setRound(state.round);
   }
 
   async function castVote() {
@@ -341,11 +398,16 @@ function App() {
                 <Play size={16} />
                 Crear
               </button>
-              <button onClick={joinRoom} disabled={isBusy}>
+              <button onClick={joinRoom} disabled={isBusy || Boolean(player?.playerId)}>
                 <Check size={16} />
                 Unirse
               </button>
+              <button onClick={openPlayerTab} disabled={!currentRoomCode}>
+                <Users size={16} />
+                Abrir jugador
+              </button>
             </div>
+            <StatusLine label="Tu jugador" value={player?.playerName || "Sin unir"} tone={player?.playerId ? "good" : "muted"} />
             <StatusLine label="Tiempo real" value={stompState} tone={stompState === "online" ? "good" : "muted"} />
           </section>
 
@@ -401,9 +463,9 @@ function App() {
             <select value={deck} onChange={(event) => setDeck(event.target.value)} aria-label="Mazo">
               {DECKS.map((item) => <option key={item} value={item}>{deckLabel(item)}</option>)}
             </select>
-            <button className="primary" onClick={startRound} disabled={isBusy || !currentRoomCode}>
+            <button className="primary" onClick={startRound} disabled={isBusy || !currentRoomCode || roundIsActive || players.length === 0}>
               <Play size={16} />
-              Ronda
+              {activeRound ? "Siguiente" : "Ronda"}
             </button>
           </section>
 
@@ -411,7 +473,7 @@ function App() {
             roomCode={currentRoomCode}
             playerId={player?.playerId}
             gatewayBase={api.baseUrl}
-            canDraw={Boolean(activeRound && (isDrawer || isAllDrawMode))}
+            canDraw={Boolean(roundIsActive && (isDrawer || isAllDrawMode))}
           />
         </section>
 
@@ -654,6 +716,7 @@ function createApiClient(baseUrl) {
     startRound: (code, mode, deck, drawerId) => request(normalizedBaseUrl, `/games/${code}/rounds`, { method: "POST", body: { mode, deck, drawerId } }),
     submitAnswer: (code, playerId, answer) => request(normalizedBaseUrl, `/games/${code}/answers`, { method: "POST", body: { playerId, answer } }),
     getGameState: (code, viewerPlayerId) => request(normalizedBaseUrl, `/games/${code}${viewerPlayerId ? `?viewerPlayerId=${encodeURIComponent(viewerPlayerId)}` : ""}`),
+    expireRound: (code, roundId) => request(normalizedBaseUrl, `/games/${code}/rounds/${roundId}/timeout`, { method: "POST" }),
     castVote: (code, roundId, voterId, candidateId) => request(normalizedBaseUrl, `/games/${code}/rounds/${roundId}/votes`, { method: "POST", body: { voterId, candidateId } }),
     createVoiceToken: (roomCode, playerId, playerName) => request(normalizedBaseUrl, "/voice/token", { method: "POST", body: { roomCode, playerId, playerName } }),
     setMuted: (roomCode, playerId, muted) => request(normalizedBaseUrl, "/voice/mute", { method: "POST", body: { roomCode, playerId, muted } }),
@@ -717,7 +780,7 @@ function clearCanvasById(id) {
 }
 
 function handleRoundEvent(payload, setChatMessages, currentPlayerId) {
-  const type = payload?.type || payload?.eventType || payload?.name;
+  const type = eventType(payload);
   if (type === "WORD_GUESSED") {
     if (payload?.playerId === currentPlayerId) {
       return;
@@ -727,6 +790,10 @@ function handleRoundEvent(payload, setChatMessages, currentPlayerId) {
       ...current
     ].slice(0, 18));
   }
+}
+
+function eventType(payload) {
+  return payload?.type || payload?.eventType || payload?.name;
 }
 
 function handleVoiceEvent(payload, setVoice) {
@@ -772,6 +839,18 @@ function deckLabel(value) {
     SISTEMAS: "Sistemas",
     FISICA: "Fisica"
   }[value];
+}
+
+function nextPlayerName(players) {
+  const base = "Jugador";
+  const usedNames = new Set(players.map((item) => item.playerName));
+  for (let index = players.length + 1; index < players.length + 20; index += 1) {
+    const candidate = `${base} ${index}`;
+    if (!usedNames.has(candidate)) {
+      return candidate;
+    }
+  }
+  return `${base} ${Date.now().toString().slice(-4)}`;
 }
 
 createRoot(document.getElementById("root")).render(<App />);
