@@ -8,6 +8,8 @@ import edu.eci.uniplay.voice.domain.model.ParticipantName;
 import edu.eci.uniplay.voice.domain.model.RoomCode;
 import edu.eci.uniplay.voice.infrastructure.config.VoiceProperties;
 import io.livekit.server.AccessToken;
+import io.livekit.server.CanPublish;
+import io.livekit.server.CanSubscribe;
 import io.livekit.server.RoomJoin;
 import io.livekit.server.RoomName;
 
@@ -29,7 +31,12 @@ public class LiveKitVoiceTokenIssuer implements VoiceTokenIssuer {
         AccessToken token = new AccessToken(voiceProperties.apiKey(), voiceProperties.apiSecret());
         token.setIdentity(participantIdentity.asString());
         token.setName(participantName.value());
-        token.addGrants(new RoomJoin(true), new RoomName(roomCode.voiceRoomName()));
+        token.addGrants(
+                new RoomJoin(true),
+                new RoomName(roomCode.voiceRoomName()),
+                new CanPublish(true),
+                new CanSubscribe(true)
+        );
         token.setTtl(ttl.toMillis());
         return token.toJwt();
     }

@@ -1,6 +1,7 @@
 package edu.eci.uniplay.voice.infrastructure.livekit;
 
 import java.time.Duration;
+import java.util.Base64;
 
 import edu.eci.uniplay.voice.domain.model.ParticipantIdentity;
 import edu.eci.uniplay.voice.domain.model.ParticipantName;
@@ -28,7 +29,11 @@ class LiveKitVoiceTokenIssuerTest {
                 new ParticipantName("Juan"),
                 Duration.ofMinutes(30)
         );
+        String payload = new String(Base64.getUrlDecoder().decode(token.split("\\.")[1]));
 
         assertThat(token).contains(".");
+        assertThat(payload).contains("\"roomJoin\":true");
+        assertThat(payload).contains("\"canPublish\":true");
+        assertThat(payload).contains("\"canSubscribe\":true");
     }
 }
