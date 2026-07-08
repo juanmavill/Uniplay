@@ -1,7 +1,7 @@
 package edu.eci.uniplay.room.application.service;
 
 import java.time.Clock;
-import java.time.Instant;
+import java.util.Map;
 
 import edu.eci.uniplay.room.application.dto.CreateRoomCommand;
 import edu.eci.uniplay.room.application.dto.RoomCreatedResult;
@@ -14,8 +14,13 @@ import edu.eci.uniplay.room.application.port.out.RoomRepository;
 import edu.eci.uniplay.room.domain.model.Room;
 import edu.eci.uniplay.room.domain.model.RoomCode;
 import edu.eci.uniplay.room.domain.model.RoomId;
+import net.logstash.logback.marker.Markers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CreateRoomService implements CreateRoomUseCase {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CreateRoomService.class);
 
     private final RoomRepository roomRepository;
     private final RoomCodeGenerator roomCodeGenerator;
@@ -48,6 +53,11 @@ public class CreateRoomService implements CreateRoomUseCase {
                 room.maxPlayers(),
                 room.createdAt()
         ));
+        LOGGER.info(Markers.appendEntries(Map.of(
+                "salaId", room.id().value().toString(),
+                "evento", "sala.creada",
+                "timestamp", room.createdAt().toString()
+        )), "room created");
 
         return new RoomCreatedResult(
                 room.id().value(),
