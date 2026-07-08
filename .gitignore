@@ -1,0 +1,36 @@
+# Operating system
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# Java and Gradle
+.gradle/
+build/
+out/
+target/
+
+# Node and frontend
+node_modules/
+dist/
+coverage/
+
+# Logs
+*.log
+logs/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Docker
+*.pid
+
+# Temporary files
+tmp/
+temp/
