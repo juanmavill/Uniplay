@@ -7,9 +7,15 @@ import edu.eci.uniplay.game.application.event.RoundGuessedEvent;
 import edu.eci.uniplay.game.application.event.RoundStartedEvent;
 import edu.eci.uniplay.game.application.event.VoteCastEvent;
 import edu.eci.uniplay.game.application.port.out.DomainEventPublisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import static net.logstash.logback.marker.Markers.append;
+
 public class RedisDomainEventPublisher implements DomainEventPublisher {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(RedisDomainEventPublisher.class);
 
     static final String ROUND_STARTED_CHANNEL = "ronda.iniciada";
     static final String ROUND_GUESSED_CHANNEL = "palabra.adivinada";
@@ -28,6 +34,7 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
     public void publishRoundStarted(RoundStartedEvent event) {
         try {
             redisTemplate.convertAndSend(ROUND_STARTED_CHANNEL, objectMapper.writeValueAsString(RoundStartedPayload.from(event)));
+            logPublished(ROUND_STARTED_CHANNEL, event.roomCode(), event.occurredAt().toString());
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("round started event could not be serialized", exception);
         }
@@ -37,6 +44,7 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
     public void publishRoundGuessed(RoundGuessedEvent event) {
         try {
             redisTemplate.convertAndSend(ROUND_GUESSED_CHANNEL, objectMapper.writeValueAsString(RoundGuessedPayload.from(event)));
+            logPublished(ROUND_GUESSED_CHANNEL, event.roomCode(), event.occurredAt().toString());
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("round guessed event could not be serialized", exception);
         }
@@ -46,6 +54,7 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
     public void publishRoundFinished(RoundFinishedEvent event) {
         try {
             redisTemplate.convertAndSend(ROUND_FINISHED_CHANNEL, objectMapper.writeValueAsString(RoundFinishedPayload.from(event)));
+            logPublished(ROUND_FINISHED_CHANNEL, event.roomCode(), event.occurredAt().toString());
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("round finished event could not be serialized", exception);
         }
@@ -55,9 +64,19 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
     public void publishVoteCast(VoteCastEvent event) {
         try {
             redisTemplate.convertAndSend(VOTE_CAST_CHANNEL, objectMapper.writeValueAsString(VoteCastPayload.from(event)));
+            logPublished(VOTE_CAST_CHANNEL, event.roomCode(), event.occurredAt().toString());
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("vote cast event could not be serialized", exception);
         }
+    }
+
+    private void logPublished(String eventName, String roomCode, String timestamp) {
+        LOGGER.info(
+                append("evento", eventName)
+                        .and(append("salaId", roomCode))
+                        .and(append("timestamp", timestamp)),
+                "domain event published"
+        );
     }
 
     private record RoundStartedPayload(

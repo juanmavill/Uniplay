@@ -5,9 +5,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.eci.uniplay.voice.application.event.MuteStateChangedEvent;
 import edu.eci.uniplay.voice.application.event.SpeakingStateChangedEvent;
 import edu.eci.uniplay.voice.application.port.out.VoiceEventPublisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
+import static net.logstash.logback.marker.Markers.append;
+
 public class RedisVoiceEventPublisher implements VoiceEventPublisher {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(RedisVoiceEventPublisher.class);
 
     static final String MUTE_STATE_CHANGED_CHANNEL = "voz.microfono_actualizado";
     static final String SPEAKING_STATE_CHANGED_CHANNEL = "voz.jugador_hablando";
@@ -27,6 +33,7 @@ public class RedisVoiceEventPublisher implements VoiceEventPublisher {
                     MUTE_STATE_CHANGED_CHANNEL,
                     objectMapper.writeValueAsString(MuteStateChangedPayload.from(event))
             );
+            logPublished(MUTE_STATE_CHANGED_CHANNEL, event.roomCode(), event.occurredAt().toString());
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("mute state event could not be serialized", exception);
         }
@@ -39,9 +46,19 @@ public class RedisVoiceEventPublisher implements VoiceEventPublisher {
                     SPEAKING_STATE_CHANGED_CHANNEL,
                     objectMapper.writeValueAsString(SpeakingStateChangedPayload.from(event))
             );
+            logPublished(SPEAKING_STATE_CHANGED_CHANNEL, event.roomCode(), event.occurredAt().toString());
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("speaking state event could not be serialized", exception);
         }
+    }
+
+    private void logPublished(String eventName, String roomCode, String timestamp) {
+        LOGGER.info(
+                append("evento", eventName)
+                        .and(append("salaId", roomCode))
+                        .and(append("timestamp", timestamp)),
+                "domain event published"
+        );
     }
 
     private record MuteStateChangedPayload(
