@@ -5,11 +5,13 @@ import java.time.Clock;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.eci.uniplay.room.application.port.in.CreateRoomUseCase;
 import edu.eci.uniplay.room.application.port.in.JoinRoomUseCase;
+import edu.eci.uniplay.room.application.port.in.ListPlayersUseCase;
 import edu.eci.uniplay.room.application.port.out.DomainEventPublisher;
 import edu.eci.uniplay.room.application.port.out.RoomCodeGenerator;
 import edu.eci.uniplay.room.application.port.out.RoomRepository;
 import edu.eci.uniplay.room.application.service.CreateRoomService;
 import edu.eci.uniplay.room.application.service.JoinRoomService;
+import edu.eci.uniplay.room.application.service.ListPlayersService;
 import edu.eci.uniplay.room.application.service.RoomCreationPolicy;
 import edu.eci.uniplay.room.infrastructure.code.SecureRandomRoomCodeGenerator;
 import edu.eci.uniplay.room.infrastructure.redis.RedisDomainEventPublisher;
@@ -76,5 +78,10 @@ public class RoomServiceConfiguration {
             Clock clock
     ) {
         return new JoinRoomService(roomRepository, domainEventPublisher, clock);
+    }
+
+    @Bean
+    ListPlayersUseCase listPlayersUseCase(RoomRepository roomRepository) {
+        return new ListPlayersService(roomRepository);
     }
 }
