@@ -9,11 +9,28 @@ import "./styles.css";
 const DECKS = ["GENERAL", "MATEMATICAS", "SISTEMAS", "FISICA"];
 const MODES = ["CLASSIC", "ALL_DRAW"];
 const INITIAL_PARAMS = new URLSearchParams(window.location.search);
+const INITIAL_ROUTE = parsePlayerRoute(window.location.pathname);
+
+function parsePlayerRoute(pathname) {
+  const match = pathname.match(/^\/sala\/([^/]+)\/jugador\/([^/]+)\/?$/);
+  if (!match) {
+    return null;
+  }
+  return {
+    roomCode: decodeURIComponent(match[1]).toUpperCase(),
+    playerId: decodeURIComponent(match[2])
+  };
+}
+
+function playerPath(roomCode, playerId) {
+  return `/sala/${encodeURIComponent(roomCode)}/jugador/${encodeURIComponent(playerId)}`;
+}
 
 function App() {
   const [gatewayUrl] = React.useState(() => localStorage.getItem("uniplay.gatewayUrl") || "");
+  const [route, setRoute] = React.useState(INITIAL_ROUTE);
   const [room, setRoom] = React.useState(null);
-  const [roomCodeInput, setRoomCodeInput] = React.useState(() => INITIAL_PARAMS.get("room")?.toUpperCase() || "");
+  const [roomCodeInput, setRoomCodeInput] = React.useState(() => INITIAL_ROUTE?.roomCode || INITIAL_PARAMS.get("room")?.toUpperCase() || "");
   const [playerName, setPlayerName] = React.useState(() => (
     INITIAL_PARAMS.get("name")
     || sessionStorage.getItem("uniplay.playerName")
@@ -26,6 +43,7 @@ function App() {
   const [gameState, setGameState] = React.useState(null);
   const [answer, setAnswer] = React.useState("");
   const [chatMessages, setChatMessages] = React.useState([]);
+  const [playerLink, setPlayerLink] = React.useState("");
   const [deck, setDeck] = React.useState("SISTEMAS");
   const [mode, setMode] = React.useState("CLASSIC");
   const [candidateId, setCandidateId] = React.useState("");
@@ -35,10 +53,12 @@ function App() {
   const [isBusy, setIsBusy] = React.useState(false);
   const [error, setError] = React.useState("");
   const livekitRoomRef = React.useRef(null);
-  const shouldAutoJoinRef = React.useRef(INITIAL_PARAMS.get("join") === "1");
 
   const api = React.useMemo(() => createApiClient(gatewayUrl), [gatewayUrl]);
-  const currentRoomCode = room?.code || roomCodeInput.trim().toUpperCase();
+  const playerRoute = route;
+  const routeRoomCode = playerRoute?.roomCode;
+  const routePlayerId = playerRoute?.playerId;
+  const currentRoomCode = routeRoomCode || room?.code || roomCodeInput.trim().toUpperCase();
   const activeRound = gameState?.round || round;
   const roundIsActive = activeRound?.status === "ACTIVE";
   const timer = useRoundTimer(activeRound);
@@ -63,11 +83,62 @@ function App() {
   }, [playerName]);
 
   React.useEffect(() => {
-    if (shouldAutoJoinRef.current && currentRoomCode && !player?.playerId) {
-      shouldAutoJoinRef.current = false;
-      joinRoom();
+    const handlePopState = () => setRoute(parsePlayerRoute(window.location.pathname));
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  React.useEffect(() => {
+    if (!routeRoomCode || !routePlayerId) {
+      return undefined;
     }
-  }, [currentRoomCode, player?.playerId]);
+
+    let cancelled = false;
+    const loadPlayerRoute = async () => {
+      setError("");
+      try {
+        const result = await api.listPlayers(routeRoomCode);
+        if (cancelled) {
+          return;
+        }
+        const routePlayer = (result.players || []).find((item) => item.playerId === routePlayerId);
+        if (!routePlayer) {
+          throw new Error("No se encontro este jugador en la sala");
+        }
+        setRoom({ code: routeRoomCode });
+        setRoomCodeInput(routeRoomCode);
+        setPlayer({ playerId: routePlayer.playerId, playerName: routePlayer.playerName });
+        setPlayerName(routePlayer.playerName);
+        setPlayers(result.players || []);
+
+        try {
+          const state = await api.getGameState(routeRoomCode, routePlayer.playerId);
+          if (!cancelled) {
+            setGameState(state);
+            setRound(state.round);
+          }
+        } catch {
+          if (!cancelled) {
+            setGameState(null);
+            setRound(null);
+          }
+        }
+      } catch (loadError) {
+        if (!cancelled) {
+          setPlayer(null);
+          setPlayers([]);
+          setGameState(null);
+          setRound(null);
+          setError(loadError.message || "No se pudo cargar este jugador");
+        }
+      }
+    };
+
+    loadPlayerRoute();
+    return () => {
+      cancelled = true;
+    };
+  }, [api, routeRoomCode, routePlayerId]);
 
   React.useEffect(() => {
     if (players.length > 0 && turnNumber >= players.length) {
@@ -76,7 +147,7 @@ function App() {
   }, [players.length, turnNumber]);
 
   React.useEffect(() => {
-    if (!currentRoomCode) {
+    if (!playerRoute || !currentRoomCode) {
       return undefined;
     }
 
@@ -98,10 +169,10 @@ function App() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [api, currentRoomCode]);
+  }, [api, currentRoomCode, playerRoute]);
 
   React.useEffect(() => {
-    if (!currentRoomCode) {
+    if (!playerRoute || !currentRoomCode) {
       setStompState("offline");
       return undefined;
     }
@@ -132,7 +203,7 @@ function App() {
 
     client.activate();
     return () => client.deactivate();
-  }, [api, currentRoomCode, player?.playerId]);
+  }, [api, currentRoomCode, player?.playerId, playerRoute]);
 
   React.useEffect(() => {
     if (!roundIsActive || !activeRound?.endsAt || !activeRound?.roundId || !currentRoomCode) {
@@ -170,39 +241,47 @@ function App() {
     ].slice(0, 18));
   }
 
+  function navigateToPlayer(code, playerId) {
+    const normalizedCode = code.trim().toUpperCase();
+    const path = playerPath(normalizedCode, playerId);
+    window.history.pushState({}, "", path);
+    setRoute({ roomCode: normalizedCode, playerId });
+  }
+
+  function goToLobby() {
+    window.history.pushState({}, "", "/");
+    setRoute(null);
+    setRoom(null);
+    setPlayer(null);
+    setPlayers([]);
+    setRound(null);
+    setGameState(null);
+    setChatMessages([]);
+    setPlayerLink("");
+    setStompState("offline");
+  }
+
   async function createRoom() {
     await runAction(async () => {
       const createdRoom = await api.createRoom(21);
-      setRoom(createdRoom);
-      setRoomCodeInput(createdRoom.code);
-      setPlayer(null);
-      setPlayers([]);
-      setRound(null);
-      setGameState(null);
+      const joined = await api.joinRoom(createdRoom.code, playerName.trim() || "Jugador");
       setTurnNumber(0);
-      setChatMessages([{ id: crypto.randomUUID(), type: "system", tone: "system", text: `Sala ${createdRoom.code} creada` }]);
+      setPlayerLink("");
+      setChatMessages([{ id: crypto.randomUUID(), type: "system", tone: "system", text: `Sala ${joined.code} creada` }]);
+      navigateToPlayer(joined.code, joined.playerId);
     });
   }
 
   async function joinRoom() {
     await runAction(async () => {
-      const code = currentRoomCode;
+      const code = roomCodeInput.trim().toUpperCase();
       if (!code) {
         throw new Error("Ingresa o crea un codigo de sala");
       }
       const joined = await api.joinRoom(code, playerName.trim() || "Jugador");
-      setRoom({ code: joined.code, roomId: joined.roomId });
-      setRoomCodeInput(joined.code);
-      setPlayer({ playerId: joined.playerId, playerName: joined.playerName });
-      setPlayers(joined.players || []);
-      try {
-        const state = await api.getGameState(joined.code, joined.playerId);
-        setGameState(state);
-        setRound(state.round);
-      } catch {
-        setGameState(null);
-      }
+      setPlayerLink("");
       addSystemMessage(`${joined.playerName} entro a la sala`);
+      navigateToPlayer(joined.code, joined.playerId);
     });
   }
 
@@ -216,17 +295,23 @@ function App() {
     });
   }
 
-  function openPlayerTab() {
+  async function openPlayerTab() {
     if (!currentRoomCode) {
       setError("Crea o unete a una sala antes de abrir otro jugador");
       return;
     }
-    const nextName = nextPlayerName(players);
-    const targetUrl = new URL(window.location.href);
-    targetUrl.searchParams.set("room", currentRoomCode);
-    targetUrl.searchParams.set("name", nextName);
-    targetUrl.searchParams.set("join", "1");
-    window.open(targetUrl.toString(), "_blank", "noopener,noreferrer");
+    await runAction(async () => {
+      const joined = await api.joinRoom(currentRoomCode, nextPlayerName(players));
+      const targetUrl = new URL(playerPath(joined.code, joined.playerId), window.location.origin);
+      setPlayerLink(targetUrl.toString());
+      try {
+        await navigator.clipboard?.writeText(targetUrl.toString());
+      } catch {
+        // The visible link is still available when clipboard permission is denied.
+      }
+      setPlayers(joined.players || []);
+      addSystemMessage(`${joined.playerName} entro a la sala. Enlace generado.`);
+    });
   }
 
   async function startRound() {
@@ -360,6 +445,45 @@ function App() {
     });
   }
 
+  if (!playerRoute) {
+    return (
+      <main className="app-shell lobby-shell">
+        <section className="lobby-panel">
+          <div>
+            <p className="eyebrow">UniPlay</p>
+            <h1>Entrar a partida</h1>
+          </div>
+          {error && <div className="alert" role="alert">{error}</div>}
+          <div className="lobby-form">
+            <label>
+              Nombre
+              <input value={playerName} onChange={(event) => setPlayerName(event.target.value)} />
+            </label>
+            <label>
+              Codigo
+              <input
+                value={roomCodeInput}
+                maxLength={6}
+                onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase())}
+                placeholder="ABC123"
+              />
+            </label>
+          </div>
+          <div className="button-row">
+            <button className="primary" onClick={createRoom} disabled={isBusy}>
+              <Play size={16} />
+              Crear sala
+            </button>
+            <button onClick={joinRoom} disabled={isBusy || !roomCodeInput.trim()}>
+              <Check size={16} />
+              Unirse
+            </button>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -379,36 +503,29 @@ function App() {
 
       <section className="game-shell">
         <aside className="left-rail">
-          <section className="panel room-panel">
+          <section className="panel room-panel session-panel">
             <PanelTitle icon={<Users size={18} />} title="Sala" />
-            <label>
-              Nombre
-              <input value={playerName} onChange={(event) => setPlayerName(event.target.value)} />
-            </label>
-            <label>
-              Codigo
-              <input
-                value={roomCodeInput}
-                maxLength={6}
-                onChange={(event) => setRoomCodeInput(event.target.value.toUpperCase())}
-              />
-            </label>
+            <StatusLine label="Codigo" value={currentRoomCode || "Sin sala"} />
+            <StatusLine label="Tu jugador" value={player?.playerName || "Cargando"} tone={player?.playerId ? "good" : "muted"} />
+            <StatusLine label="Tiempo real" value={stompState} tone={stompState === "online" ? "good" : "muted"} />
             <div className="button-row">
-              <button className="primary" onClick={createRoom} disabled={isBusy}>
-                <Play size={16} />
-                Crear
-              </button>
-              <button onClick={joinRoom} disabled={isBusy || Boolean(player?.playerId)}>
-                <Check size={16} />
-                Unirse
-              </button>
               <button onClick={openPlayerTab} disabled={!currentRoomCode}>
                 <Users size={16} />
-                Abrir jugador
+                Nuevo enlace
+              </button>
+              <button onClick={goToLobby}>
+                Lobby
               </button>
             </div>
-            <StatusLine label="Tu jugador" value={player?.playerName || "Sin unir"} tone={player?.playerId ? "good" : "muted"} />
-            <StatusLine label="Tiempo real" value={stompState} tone={stompState === "online" ? "good" : "muted"} />
+            {playerLink && (
+              <div className="share-link">
+                <input aria-label="Enlace de nuevo jugador" value={playerLink} readOnly />
+                <button onClick={() => window.open(playerLink, "_blank", "noopener,noreferrer")}>
+                  <Copy size={16} />
+                  Abrir
+                </button>
+              </div>
+            )}
           </section>
 
           <section className="panel players-panel">
