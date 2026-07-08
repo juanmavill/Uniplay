@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+jobs:
+  repo-validation:
+    name: Repository validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate required paths
+        shell: bash
+        run: |
+          required_paths=(
+            "api-gateway"
+            "room-service"
+            "game-service"
+            "realtime-service"
+            "voice-service"
+            "metrics-service"
+            "frontend"
+            "infra"
+            "docs/adr/0001-monorepo-con-despliegue-independiente.md"
+            "docs/git-workflow.md"
+          )
+
+          for path in "${required_paths[@]}"; do
+            test -e "$path" || {
+              echo "Missing required path: $path"
+              exit 1
+            }
+          done
+
+      - name: Check whitespace
+        run: git diff --check
+
+      - name: Validate local infrastructure compose file
+        run: docker compose -f infra/docker-compose.yml config
