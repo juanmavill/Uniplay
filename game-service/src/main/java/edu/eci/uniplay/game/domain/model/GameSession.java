@@ -1,0 +1,70 @@
+package edu.eci.uniplay.game.domain.model;
+
+import java.time.Instant;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
+
+public final class GameSession {
+
+    private final RoomCode roomCode;
+    private final Round round;
+    private final Map<PlayerId, Integer> scores;
+
+    private GameSession(RoomCode roomCode, Round round, Map<PlayerId, Integer> scores) {
+        this.roomCode = roomCode;
+        this.round = round;
+        this.scores = Map.copyOf(scores);
+    }
+
+    public static GameSession newFor(RoomCode roomCode) {
+        return new GameSession(roomCode, null, Map.of());
+    }
+
+    public static GameSession restore(RoomCode roomCode, Round round, Map<PlayerId, Integer> scores) {
+        return new GameSession(roomCode, round, scores);
+    }
+
+    public GameSession startRound(RoundId roundId, SecretWord secretWord, Instant startedAt) {
+        if (round != null && round.isActive()) {
+            throw new RoundAlreadyActiveException("room " + roomCode.value() + " already has an active round");
+        }
+
+        return new GameSession(roomCode, Round.start(roundId, secretWord, startedAt), scores);
+    }
+
+    public AnswerEvaluation submitAnswer(PlayerId playerId, String answer, int points, Instant answeredAt) {
+        if (round == null || !round.isActive()) {
+            throw new RoundNotActiveException("room " + roomCode.value() + " does not have an active round");
+        }
+
+        int currentScore = scoreOf(playerId);
+
+        if (!round.matches(answer)) {
+            return new AnswerEvaluation(this, false, currentScore, round.id());
+        }
+
+        Map<PlayerId, Integer> updatedScores = new LinkedHashMap<>(scores);
+        int newScore = currentScore + points;
+        updatedScores.put(playerId, newScore);
+
+        GameSession updatedSession = new GameSession(roomCode, round.finish(playerId, answeredAt), updatedScores);
+        return new AnswerEvaluation(updatedSession, true, newScore, round.id());
+    }
+
+    public int scoreOf(PlayerId playerId) {
+        return scores.getOrDefault(playerId, 0);
+    }
+
+    public RoomCode roomCode() {
+        return roomCode;
+    }
+
+    public Optional<Round> round() {
+        return Optional.ofNullable(round);
+    }
+
+    public Map<PlayerId, Integer> scores() {
+        return scores;
+    }
+}
