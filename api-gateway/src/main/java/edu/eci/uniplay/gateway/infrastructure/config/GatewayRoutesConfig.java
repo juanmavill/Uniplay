@@ -17,6 +17,11 @@ public class GatewayRoutesConfig {
                 .route("game-service", route -> route
                         .path("/games/**")
                         .uri(properties.getGameServiceUri().toString()))
+                .route("realtime-service-websocket", route -> route
+                        .path("/ws/**")
+                        .and()
+                        .header("Upgrade", "websocket")
+                        .uri(properties.getRealtimeWebsocketUri().toString()))
                 .route("realtime-service", route -> route
                         .path("/ws", "/ws/**")
                         .uri(properties.getRealtimeServiceUri().toString()))

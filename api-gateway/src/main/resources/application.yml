@@ -20,6 +20,7 @@ uniplay:
     room-service-uri: ${ROOM_SERVICE_URI:http://localhost:8081}
     game-service-uri: ${GAME_SERVICE_URI:http://localhost:8082}
     realtime-service-uri: ${REALTIME_SERVICE_URI:http://localhost:8083}
+    realtime-websocket-uri: ${REALTIME_WEBSOCKET_URI:ws://localhost:8083}
     metrics-service-uri: ${METRICS_SERVICE_URI:http://localhost:8084}
     voice-service-uri: ${VOICE_SERVICE_URI:http://localhost:8085}
     allowed-origins: ${GATEWAY_ALLOWED_ORIGINS:*}

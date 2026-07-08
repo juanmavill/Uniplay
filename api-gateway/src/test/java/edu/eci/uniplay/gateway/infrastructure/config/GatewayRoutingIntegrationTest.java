@@ -30,6 +30,7 @@ class GatewayRoutingIntegrationTest {
         registry.add("uniplay.gateway.room-service-uri", BACKEND_STUB::uri);
         registry.add("uniplay.gateway.game-service-uri", BACKEND_STUB::uri);
         registry.add("uniplay.gateway.realtime-service-uri", BACKEND_STUB::uri);
+        registry.add("uniplay.gateway.realtime-websocket-uri", () -> BACKEND_STUB.uri().replace("http://", "ws://"));
         registry.add("uniplay.gateway.metrics-service-uri", BACKEND_STUB::uri);
         registry.add("uniplay.gateway.voice-service-uri", BACKEND_STUB::uri);
         registry.add("uniplay.gateway.rate-limit.enabled", () -> "false");

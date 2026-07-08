@@ -3,6 +3,7 @@ uniplay:
     room-service-uri: ${ROOM_SERVICE_URI}
     game-service-uri: ${GAME_SERVICE_URI}
     realtime-service-uri: ${REALTIME_SERVICE_URI}
+    realtime-websocket-uri: ${REALTIME_WEBSOCKET_URI}
     metrics-service-uri: ${METRICS_SERVICE_URI}
     voice-service-uri: ${VOICE_SERVICE_URI}
     allowed-origins: ${GATEWAY_ALLOWED_ORIGINS}

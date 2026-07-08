@@ -3,5 +3,6 @@ uniplay:
     room-service-uri: ${ROOM_SERVICE_URI:http://room-service:8081}
     game-service-uri: ${GAME_SERVICE_URI:http://game-service:8082}
     realtime-service-uri: ${REALTIME_SERVICE_URI:http://realtime-service:8083}
+    realtime-websocket-uri: ${REALTIME_WEBSOCKET_URI:ws://realtime-service:8083}
     metrics-service-uri: ${METRICS_SERVICE_URI:http://metrics-service:8084}
     voice-service-uri: ${VOICE_SERVICE_URI:http://voice-service:8085}

@@ -13,6 +13,7 @@ public class GatewayServiceProperties {
     private URI roomServiceUri = URI.create("http://localhost:8081");
     private URI gameServiceUri = URI.create("http://localhost:8082");
     private URI realtimeServiceUri = URI.create("http://localhost:8083");
+    private URI realtimeWebsocketUri = URI.create("ws://localhost:8083");
     private URI metricsServiceUri = URI.create("http://localhost:8084");
     private URI voiceServiceUri = URI.create("http://localhost:8085");
     private List<String> allowedOrigins = new ArrayList<>(List.of("*"));
@@ -40,6 +41,14 @@ public class GatewayServiceProperties {
 
     public void setRealtimeServiceUri(URI realtimeServiceUri) {
         this.realtimeServiceUri = realtimeServiceUri;
+    }
+
+    public URI getRealtimeWebsocketUri() {
+        return realtimeWebsocketUri;
+    }
+
+    public void setRealtimeWebsocketUri(URI realtimeWebsocketUri) {
+        this.realtimeWebsocketUri = realtimeWebsocketUri;
     }
 
     public URI getMetricsServiceUri() {

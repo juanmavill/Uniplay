@@ -38,6 +38,7 @@ X-RateLimit-Remaining: 0
 | `ROOM_SERVICE_URI` | `http://localhost:8081` |
 | `GAME_SERVICE_URI` | `http://localhost:8082` |
 | `REALTIME_SERVICE_URI` | `http://localhost:8083` |
+| `REALTIME_WEBSOCKET_URI` | `ws://localhost:8083` |
 | `METRICS_SERVICE_URI` | `http://localhost:8084` |
 | `VOICE_SERVICE_URI` | `http://localhost:8085` |
 | `GATEWAY_ALLOWED_ORIGINS` | `*` |
