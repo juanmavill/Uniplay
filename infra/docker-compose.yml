@@ -75,6 +75,27 @@ services:
       retries: 5
       start_period: 30s
 
+  metrics-service:
+    build:
+      context: ../metrics-service
+    container_name: uniplay-metrics-service
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      METRICS_SERVICE_PORT: 8084
+    ports:
+      - "${METRICS_SERVICE_PORT:-8084}:8084"
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
+
   livekit:
     image: livekit/livekit-server:latest
     container_name: uniplay-livekit

@@ -1,6 +1,10 @@
 spring:
   application:
     name: metrics-service
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 server:
   port: ${METRICS_SERVICE_PORT:8084}
