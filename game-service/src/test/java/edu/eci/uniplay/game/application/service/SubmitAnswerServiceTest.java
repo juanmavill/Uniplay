@@ -19,6 +19,7 @@ import edu.eci.uniplay.game.domain.model.GameSession;
 import edu.eci.uniplay.game.domain.model.PlayerId;
 import edu.eci.uniplay.game.domain.model.RoomCode;
 import edu.eci.uniplay.game.domain.model.RoundId;
+import edu.eci.uniplay.game.domain.model.RoundMode;
 import edu.eci.uniplay.game.domain.model.SecretWord;
 import org.junit.jupiter.api.Test;
 
@@ -87,6 +88,7 @@ class SubmitAnswerServiceTest {
                 .startRound(
                         new RoundId(UUID.fromString("11111111-1111-1111-1111-111111111111")),
                         new SecretWord("Campus"),
+                        RoundMode.CLASSIC,
                         STARTED_AT,
                         ENDS_AT
                 );

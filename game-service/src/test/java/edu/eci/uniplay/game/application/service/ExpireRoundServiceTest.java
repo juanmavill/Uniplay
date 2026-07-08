@@ -18,6 +18,7 @@ import edu.eci.uniplay.game.application.port.out.GameSessionRepository;
 import edu.eci.uniplay.game.domain.model.GameSession;
 import edu.eci.uniplay.game.domain.model.RoomCode;
 import edu.eci.uniplay.game.domain.model.RoundId;
+import edu.eci.uniplay.game.domain.model.RoundMode;
 import edu.eci.uniplay.game.domain.model.SecretWord;
 import org.junit.jupiter.api.Test;
 
@@ -57,7 +58,7 @@ class ExpireRoundServiceTest {
 
     private static GameSession activeSession() {
         return GameSession.newFor(new RoomCode("ABC123"))
-                .startRound(new RoundId(ROUND_ID), new SecretWord("Campus"), STARTED_AT, ENDS_AT);
+                .startRound(new RoundId(ROUND_ID), new SecretWord("Campus"), RoundMode.CLASSIC, STARTED_AT, ENDS_AT);
     }
 
     private static final class InMemoryGameSessionRepository implements GameSessionRepository {

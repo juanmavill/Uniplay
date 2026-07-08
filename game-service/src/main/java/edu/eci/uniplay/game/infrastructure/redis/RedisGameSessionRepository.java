@@ -16,6 +16,7 @@ import edu.eci.uniplay.game.domain.model.PlayerId;
 import edu.eci.uniplay.game.domain.model.RoomCode;
 import edu.eci.uniplay.game.domain.model.Round;
 import edu.eci.uniplay.game.domain.model.RoundId;
+import edu.eci.uniplay.game.domain.model.RoundMode;
 import edu.eci.uniplay.game.domain.model.RoundStatus;
 import edu.eci.uniplay.game.domain.model.SecretWord;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -97,35 +98,63 @@ public class RedisGameSessionRepository implements GameSessionRepository {
     private record RoundDocument(
             String id,
             String word,
+            String mode,
             String status,
             String startedAt,
             String endsAt,
             String guessedBy,
-            String finishedAt
+            String finishedAt,
+            List<VoteDocument> votes
     ) {
 
         static RoundDocument from(Round round) {
             return new RoundDocument(
                     round.id().value().toString(),
                     round.secretWord().value(),
+                    round.mode().name(),
                     round.status().name(),
                     round.startedAt().toString(),
                     round.endsAt().toString(),
                     round.guessedBy() == null ? null : round.guessedBy().value().toString(),
-                    round.finishedAt() == null ? null : round.finishedAt().toString()
+                    round.finishedAt() == null ? null : round.finishedAt().toString(),
+                    round.votes().entrySet().stream()
+                            .map(entry -> VoteDocument.from(entry.getKey(), entry.getValue()))
+                            .toList()
             );
         }
 
         Round toDomain() {
+            Map<PlayerId, PlayerId> restoredVotes = new LinkedHashMap<>();
+            if (votes != null) {
+                votes.forEach(vote -> restoredVotes.put(vote.toVoterId(), vote.toCandidateId()));
+            }
+
             return new Round(
                     new RoundId(UUID.fromString(id)),
                     new SecretWord(word),
+                    mode == null ? RoundMode.CLASSIC : RoundMode.valueOf(mode),
                     RoundStatus.valueOf(status),
                     Instant.parse(startedAt),
                     Instant.parse(endsAt),
                     guessedBy == null ? null : new PlayerId(UUID.fromString(guessedBy)),
-                    finishedAt == null ? null : Instant.parse(finishedAt)
+                    finishedAt == null ? null : Instant.parse(finishedAt),
+                    restoredVotes
             );
+        }
+    }
+
+    private record VoteDocument(String voterId, String candidateId) {
+
+        static VoteDocument from(PlayerId voterId, PlayerId candidateId) {
+            return new VoteDocument(voterId.value().toString(), candidateId.value().toString());
+        }
+
+        PlayerId toVoterId() {
+            return new PlayerId(UUID.fromString(voterId));
+        }
+
+        PlayerId toCandidateId() {
+            return new PlayerId(UUID.fromString(candidateId));
         }
     }
 
