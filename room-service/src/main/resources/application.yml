@@ -23,4 +23,5 @@ uniplay:
   room:
     code-length: ${ROOM_CODE_LENGTH:6}
     max-players: ${ROOM_MAX_PLAYERS:21}
+    code-generation-max-attempts: ${ROOM_CODE_GENERATION_MAX_ATTEMPTS:10}
     ttl: ${ROOM_TTL:PT2H}
