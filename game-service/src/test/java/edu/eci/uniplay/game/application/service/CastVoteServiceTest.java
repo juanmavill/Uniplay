@@ -8,8 +8,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-import edu.eci.uniplay.game.application.dto.ExpireRoundCommand;
-import edu.eci.uniplay.game.application.dto.ExpireRoundResult;
+import edu.eci.uniplay.game.application.dto.CastVoteCommand;
+import edu.eci.uniplay.game.application.dto.CastVoteResult;
 import edu.eci.uniplay.game.application.event.RoundFinishedEvent;
 import edu.eci.uniplay.game.application.event.RoundGuessedEvent;
 import edu.eci.uniplay.game.application.event.RoundStartedEvent;
@@ -25,41 +25,44 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class ExpireRoundServiceTest {
+class CastVoteServiceTest {
 
-    private static final Instant STARTED_AT = Instant.parse("2026-07-07T12:00:00Z");
-    private static final Instant ENDS_AT = Instant.parse("2026-07-07T12:01:00Z");
+    private static final Instant NOW = Instant.parse("2026-07-07T12:00:05Z");
     private static final UUID ROUND_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final UUID VOTER_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    private static final UUID CANDIDATE_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
 
     @Test
-    void expiresRoundAndPublishesFinishedEvent() {
-        InMemoryGameSessionRepository repository = new InMemoryGameSessionRepository(activeSession());
+    void storesVoteAndPublishesEvent() {
+        InMemoryGameSessionRepository repository = new InMemoryGameSessionRepository(activeAllDrawSession());
         RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
-        ExpireRoundService service = new ExpireRoundService(
-                repository,
-                eventPublisher,
-                Clock.fixed(ENDS_AT, ZoneOffset.UTC)
-        );
+        CastVoteService service = new CastVoteService(repository, eventPublisher, Clock.fixed(NOW, ZoneOffset.UTC));
 
-        ExpireRoundResult result = service.expireRound(new ExpireRoundCommand("ABC123", ROUND_ID));
+        CastVoteResult result = service.castVote(new CastVoteCommand("ABC123", ROUND_ID, VOTER_ID, CANDIDATE_ID));
 
-        assertThat(result.status()).isEqualTo("EXPIRED");
-        assertThat(result.reason()).isEqualTo("TIMEOUT");
-        assertThat(result.finishedAt()).isEqualTo(ENDS_AT);
+        assertThat(result.tallies()).singleElement().satisfies(tally -> {
+            assertThat(tally.candidateId()).isEqualTo(CANDIDATE_ID);
+            assertThat(tally.votes()).isEqualTo(1);
+        });
         assertThat(repository.savedSession.round()).get()
-                .extracting(round -> round.status().name())
-                .isEqualTo("EXPIRED");
-        assertThat(eventPublisher.roundFinishedEvents).singleElement().satisfies(event -> {
+                .satisfies(round -> assertThat(round.votes()).hasSize(1));
+        assertThat(eventPublisher.voteCastEvents).singleElement().satisfies(event -> {
             assertThat(event.roomCode()).isEqualTo("ABC123");
-            assertThat(event.roundId()).isEqualTo(ROUND_ID);
-            assertThat(event.reason()).isEqualTo("TIMEOUT");
-            assertThat(event.finishedAt()).isEqualTo(ENDS_AT);
+            assertThat(event.voterId()).isEqualTo(VOTER_ID);
+            assertThat(event.candidateId()).isEqualTo(CANDIDATE_ID);
+            assertThat(event.occurredAt()).isEqualTo(NOW);
         });
     }
 
-    private static GameSession activeSession() {
+    private static GameSession activeAllDrawSession() {
         return GameSession.newFor(new RoomCode("ABC123"))
-                .startRound(new RoundId(ROUND_ID), new SecretWord("Campus"), RoundMode.CLASSIC, STARTED_AT, ENDS_AT);
+                .startRound(
+                        new RoundId(ROUND_ID),
+                        new SecretWord("Campus"),
+                        RoundMode.ALL_DRAW,
+                        Instant.parse("2026-07-07T12:00:00Z"),
+                        Instant.parse("2026-07-07T12:01:00Z")
+                );
     }
 
     private static final class InMemoryGameSessionRepository implements GameSessionRepository {
@@ -83,7 +86,7 @@ class ExpireRoundServiceTest {
 
     private static final class RecordingEventPublisher implements DomainEventPublisher {
 
-        private final List<RoundFinishedEvent> roundFinishedEvents = new ArrayList<>();
+        private final List<VoteCastEvent> voteCastEvents = new ArrayList<>();
 
         @Override
         public void publishRoundStarted(RoundStartedEvent event) {
@@ -95,11 +98,11 @@ class ExpireRoundServiceTest {
 
         @Override
         public void publishRoundFinished(RoundFinishedEvent event) {
-            roundFinishedEvents.add(event);
         }
 
         @Override
         public void publishVoteCast(VoteCastEvent event) {
+            voteCastEvents.add(event);
         }
     }
 }

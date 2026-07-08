@@ -3,6 +3,7 @@ package edu.eci.uniplay.game.application.port.out;
 import edu.eci.uniplay.game.application.event.RoundGuessedEvent;
 import edu.eci.uniplay.game.application.event.RoundFinishedEvent;
 import edu.eci.uniplay.game.application.event.RoundStartedEvent;
+import edu.eci.uniplay.game.application.event.VoteCastEvent;
 
 public interface DomainEventPublisher {
 
@@ -11,4 +12,6 @@ public interface DomainEventPublisher {
     void publishRoundGuessed(RoundGuessedEvent event);
 
     void publishRoundFinished(RoundFinishedEvent event);
+
+    void publishVoteCast(VoteCastEvent event);
 }

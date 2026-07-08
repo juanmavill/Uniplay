@@ -7,6 +7,7 @@ public record RoundStartedEvent(
         String roomCode,
         UUID roundId,
         String word,
+        String mode,
         Instant startedAt,
         Instant endsAt,
         Instant occurredAt

@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record RoundResult(
         UUID roundId,
+        String mode,
         String status,
         String word,
         UUID guessedBy,

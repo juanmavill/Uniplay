@@ -1,4 +1,4 @@
 package edu.eci.uniplay.game.application.dto;
 
-public record StartRoundCommand(String roomCode) {
+public record StartRoundCommand(String roomCode, String mode) {
 }

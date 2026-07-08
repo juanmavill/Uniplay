@@ -3,6 +3,8 @@ package edu.eci.uniplay.game.infrastructure.web;
 import java.net.URI;
 import java.util.UUID;
 
+import edu.eci.uniplay.game.application.dto.CastVoteCommand;
+import edu.eci.uniplay.game.application.dto.CastVoteResult;
 import edu.eci.uniplay.game.application.dto.ExpireRoundCommand;
 import edu.eci.uniplay.game.application.dto.ExpireRoundResult;
 import edu.eci.uniplay.game.application.dto.GameStateResult;
@@ -10,12 +12,16 @@ import edu.eci.uniplay.game.application.dto.StartRoundCommand;
 import edu.eci.uniplay.game.application.dto.StartRoundResult;
 import edu.eci.uniplay.game.application.dto.SubmitAnswerCommand;
 import edu.eci.uniplay.game.application.dto.SubmitAnswerResult;
+import edu.eci.uniplay.game.application.port.in.CastVoteUseCase;
 import edu.eci.uniplay.game.application.port.in.ExpireRoundUseCase;
 import edu.eci.uniplay.game.application.port.in.GetGameStateUseCase;
 import edu.eci.uniplay.game.application.port.in.StartRoundUseCase;
 import edu.eci.uniplay.game.application.port.in.SubmitAnswerUseCase;
+import edu.eci.uniplay.game.infrastructure.web.dto.CastVoteRequest;
+import edu.eci.uniplay.game.infrastructure.web.dto.CastVoteResponse;
 import edu.eci.uniplay.game.infrastructure.web.dto.GameStateResponse;
 import edu.eci.uniplay.game.infrastructure.web.dto.ExpireRoundResponse;
+import edu.eci.uniplay.game.infrastructure.web.dto.StartRoundRequest;
 import edu.eci.uniplay.game.infrastructure.web.dto.StartRoundResponse;
 import edu.eci.uniplay.game.infrastructure.web.dto.SubmitAnswerRequest;
 import edu.eci.uniplay.game.infrastructure.web.dto.SubmitAnswerResponse;
@@ -36,22 +42,31 @@ public class GameController {
     private final SubmitAnswerUseCase submitAnswerUseCase;
     private final GetGameStateUseCase getGameStateUseCase;
     private final ExpireRoundUseCase expireRoundUseCase;
+    private final CastVoteUseCase castVoteUseCase;
 
     public GameController(
             StartRoundUseCase startRoundUseCase,
             SubmitAnswerUseCase submitAnswerUseCase,
             GetGameStateUseCase getGameStateUseCase,
-            ExpireRoundUseCase expireRoundUseCase
+            ExpireRoundUseCase expireRoundUseCase,
+            CastVoteUseCase castVoteUseCase
     ) {
         this.startRoundUseCase = startRoundUseCase;
         this.submitAnswerUseCase = submitAnswerUseCase;
         this.getGameStateUseCase = getGameStateUseCase;
         this.expireRoundUseCase = expireRoundUseCase;
+        this.castVoteUseCase = castVoteUseCase;
     }
 
     @PostMapping("/rounds")
-    ResponseEntity<StartRoundResponse> startRound(@PathVariable String roomCode) {
-        StartRoundResult result = startRoundUseCase.startRound(new StartRoundCommand(roomCode));
+    ResponseEntity<StartRoundResponse> startRound(
+            @PathVariable String roomCode,
+            @RequestBody(required = false) StartRoundRequest request
+    ) {
+        StartRoundResult result = startRoundUseCase.startRound(new StartRoundCommand(
+                roomCode,
+                request == null ? null : request.mode()
+        ));
         return ResponseEntity
                 .created(URI.create("/games/" + result.roomCode()))
                 .body(StartRoundResponse.from(result));
@@ -74,6 +89,21 @@ public class GameController {
     ExpireRoundResponse expireRound(@PathVariable String roomCode, @PathVariable UUID roundId) {
         ExpireRoundResult result = expireRoundUseCase.expireRound(new ExpireRoundCommand(roomCode, roundId));
         return ExpireRoundResponse.from(result);
+    }
+
+    @PostMapping("/rounds/{roundId}/votes")
+    CastVoteResponse castVote(
+            @PathVariable String roomCode,
+            @PathVariable UUID roundId,
+            @Valid @RequestBody CastVoteRequest request
+    ) {
+        CastVoteResult result = castVoteUseCase.castVote(new CastVoteCommand(
+                roomCode,
+                roundId,
+                request.voterId(),
+                request.candidateId()
+        ));
+        return CastVoteResponse.from(result);
     }
 
     @GetMapping

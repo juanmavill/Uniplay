@@ -13,6 +13,7 @@ import edu.eci.uniplay.game.application.dto.StartRoundResult;
 import edu.eci.uniplay.game.application.event.RoundFinishedEvent;
 import edu.eci.uniplay.game.application.event.RoundGuessedEvent;
 import edu.eci.uniplay.game.application.event.RoundStartedEvent;
+import edu.eci.uniplay.game.application.event.VoteCastEvent;
 import edu.eci.uniplay.game.application.port.out.DomainEventPublisher;
 import edu.eci.uniplay.game.application.port.out.GameSessionRepository;
 import edu.eci.uniplay.game.domain.model.GameSession;
@@ -38,10 +39,11 @@ class StartRoundServiceTest {
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
 
-        StartRoundResult result = service.startRound(new StartRoundCommand("abc123"));
+        StartRoundResult result = service.startRound(new StartRoundCommand("abc123", "ALL_DRAW"));
 
         assertThat(result.roomCode()).isEqualTo("ABC123");
         assertThat(result.word()).isEqualTo("Campus");
+        assertThat(result.mode()).isEqualTo("ALL_DRAW");
         assertThat(result.status()).isEqualTo("ACTIVE");
         assertThat(result.startedAt()).isEqualTo(NOW);
         assertThat(result.endsAt()).isEqualTo(NOW.plusSeconds(45));
@@ -50,6 +52,7 @@ class StartRoundServiceTest {
             assertThat(event.roomCode()).isEqualTo("ABC123");
             assertThat(event.roundId()).isEqualTo(result.roundId());
             assertThat(event.word()).isEqualTo("Campus");
+            assertThat(event.mode()).isEqualTo("ALL_DRAW");
             assertThat(event.startedAt()).isEqualTo(NOW);
             assertThat(event.endsAt()).isEqualTo(NOW.plusSeconds(45));
             assertThat(event.occurredAt()).isEqualTo(NOW);
@@ -86,6 +89,10 @@ class StartRoundServiceTest {
 
         @Override
         public void publishRoundFinished(RoundFinishedEvent event) {
+        }
+
+        @Override
+        public void publishVoteCast(VoteCastEvent event) {
         }
     }
 }

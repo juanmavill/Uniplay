@@ -1,9 +1,12 @@
 package edu.eci.uniplay.game.infrastructure.web.error;
 
+import edu.eci.uniplay.game.domain.model.DuplicateVoteException;
 import edu.eci.uniplay.game.domain.model.RoundAlreadyActiveException;
 import edu.eci.uniplay.game.domain.model.RoundExpiredException;
 import edu.eci.uniplay.game.domain.model.RoundNotExpiredException;
 import edu.eci.uniplay.game.domain.model.RoundNotActiveException;
+import edu.eci.uniplay.game.domain.model.SelfVoteException;
+import edu.eci.uniplay.game.domain.model.VotingNotEnabledException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -34,7 +37,10 @@ public class GlobalExceptionHandler {
             RoundAlreadyActiveException.class,
             RoundExpiredException.class,
             RoundNotActiveException.class,
-            RoundNotExpiredException.class
+            RoundNotExpiredException.class,
+            DuplicateVoteException.class,
+            SelfVoteException.class,
+            VotingNotEnabledException.class
     })
     ProblemDetail handleRoundConflict(RuntimeException exception) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());

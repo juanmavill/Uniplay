@@ -13,6 +13,7 @@ import edu.eci.uniplay.game.application.dto.SubmitAnswerResult;
 import edu.eci.uniplay.game.application.event.RoundFinishedEvent;
 import edu.eci.uniplay.game.application.event.RoundGuessedEvent;
 import edu.eci.uniplay.game.application.event.RoundStartedEvent;
+import edu.eci.uniplay.game.application.event.VoteCastEvent;
 import edu.eci.uniplay.game.application.port.out.DomainEventPublisher;
 import edu.eci.uniplay.game.application.port.out.GameSessionRepository;
 import edu.eci.uniplay.game.domain.model.GameSession;
@@ -132,6 +133,10 @@ class SubmitAnswerServiceTest {
         @Override
         public void publishRoundFinished(RoundFinishedEvent event) {
             roundFinishedEvents.add(event);
+        }
+
+        @Override
+        public void publishVoteCast(VoteCastEvent event) {
         }
     }
 }

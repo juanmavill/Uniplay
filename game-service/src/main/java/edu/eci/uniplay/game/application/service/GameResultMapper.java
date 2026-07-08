@@ -31,6 +31,7 @@ final class GameResultMapper {
     static RoundResult toRoundResult(Round round) {
         return new RoundResult(
                 round.id().value(),
+                round.mode().name(),
                 round.status().name(),
                 round.secretWord().value(),
                 round.guessedBy() == null ? null : round.guessedBy().value(),

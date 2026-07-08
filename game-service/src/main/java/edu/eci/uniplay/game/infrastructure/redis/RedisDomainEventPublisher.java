@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.eci.uniplay.game.application.event.RoundFinishedEvent;
 import edu.eci.uniplay.game.application.event.RoundGuessedEvent;
 import edu.eci.uniplay.game.application.event.RoundStartedEvent;
+import edu.eci.uniplay.game.application.event.VoteCastEvent;
 import edu.eci.uniplay.game.application.port.out.DomainEventPublisher;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
@@ -13,6 +14,7 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
     static final String ROUND_STARTED_CHANNEL = "ronda.iniciada";
     static final String ROUND_GUESSED_CHANNEL = "palabra.adivinada";
     static final String ROUND_FINISHED_CHANNEL = "ronda.terminada";
+    static final String VOTE_CAST_CHANNEL = "voto.emitido";
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -49,10 +51,20 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
         }
     }
 
+    @Override
+    public void publishVoteCast(VoteCastEvent event) {
+        try {
+            redisTemplate.convertAndSend(VOTE_CAST_CHANNEL, objectMapper.writeValueAsString(VoteCastPayload.from(event)));
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("vote cast event could not be serialized", exception);
+        }
+    }
+
     private record RoundStartedPayload(
             String roomCode,
             String roundId,
             String word,
+            String mode,
             String startedAt,
             String endsAt,
             String occurredAt
@@ -63,6 +75,7 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
                     event.roomCode(),
                     event.roundId().toString(),
                     event.word(),
+                    event.mode(),
                     event.startedAt().toString(),
                     event.endsAt().toString(),
                     event.occurredAt().toString()
@@ -108,5 +121,31 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
                     event.occurredAt().toString()
             );
         }
+    }
+
+    private record VoteCastPayload(
+            String roomCode,
+            String roundId,
+            String voterId,
+            String candidateId,
+            java.util.List<VoteTallyPayload> tallies,
+            String occurredAt
+    ) {
+
+        static VoteCastPayload from(VoteCastEvent event) {
+            return new VoteCastPayload(
+                    event.roomCode(),
+                    event.roundId().toString(),
+                    event.voterId().toString(),
+                    event.candidateId().toString(),
+                    event.tallies().stream()
+                            .map(tally -> new VoteTallyPayload(tally.candidateId().toString(), tally.votes()))
+                            .toList(),
+                    event.occurredAt().toString()
+            );
+        }
+    }
+
+    private record VoteTallyPayload(String candidateId, int votes) {
     }
 }

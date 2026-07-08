@@ -9,6 +9,7 @@ public record StartRoundResponse(
         String roomCode,
         UUID roundId,
         String word,
+        String mode,
         String status,
         Instant startedAt,
         Instant endsAt
@@ -19,6 +20,7 @@ public record StartRoundResponse(
                 result.roomCode(),
                 result.roundId(),
                 result.word(),
+                result.mode(),
                 result.status(),
                 result.startedAt(),
                 result.endsAt()

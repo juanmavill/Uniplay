@@ -44,6 +44,9 @@ public class StartRoundService implements StartRoundUseCase {
     @Override
     public StartRoundResult startRound(StartRoundCommand command) {
         RoomCode roomCode = new RoomCode(command.roomCode());
+        RoundMode mode = command.mode() == null || command.mode().isBlank()
+                ? RoundMode.CLASSIC
+                : RoundMode.valueOf(command.mode().trim().toUpperCase());
         Instant startedAt = Instant.now(clock);
         Instant endsAt = startedAt.plus(roundDuration);
         GameSession session = gameSessionRepository.findByRoomCode(roomCode)
@@ -51,12 +54,13 @@ public class StartRoundService implements StartRoundUseCase {
         SecretWord secretWord = wordDeckProvider.nextWord(roomCode);
         RoundId roundId = new RoundId(UUID.randomUUID());
 
-        GameSession updatedSession = session.startRound(roundId, secretWord, RoundMode.CLASSIC, startedAt, endsAt);
+        GameSession updatedSession = session.startRound(roundId, secretWord, mode, startedAt, endsAt);
         gameSessionRepository.save(updatedSession);
         domainEventPublisher.publishRoundStarted(new RoundStartedEvent(
                 roomCode.value(),
                 roundId.value(),
                 secretWord.value(),
+                mode.name(),
                 startedAt,
                 endsAt,
                 startedAt
@@ -67,6 +71,7 @@ public class StartRoundService implements StartRoundUseCase {
                 roomCode.value(),
                 round.id().value(),
                 round.secretWord().value(),
+                round.mode().name(),
                 round.status().name(),
                 round.startedAt(),
                 round.endsAt()

@@ -1,12 +1,14 @@
 package edu.eci.uniplay.game.infrastructure.redis;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.eci.uniplay.game.application.event.RoundFinishedEvent;
 import edu.eci.uniplay.game.application.event.RoundGuessedEvent;
 import edu.eci.uniplay.game.application.event.RoundStartedEvent;
+import edu.eci.uniplay.game.application.event.VoteCastEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -31,6 +33,7 @@ class RedisDomainEventPublisherTest {
                 "ABC123",
                 UUID.fromString("11111111-1111-1111-1111-111111111111"),
                 "Campus",
+                "ALL_DRAW",
                 Instant.parse("2026-07-07T12:00:00Z"),
                 Instant.parse("2026-07-07T12:01:00Z"),
                 Instant.parse("2026-07-07T12:00:00Z")
@@ -38,7 +41,7 @@ class RedisDomainEventPublisherTest {
 
         verify(redisTemplate).convertAndSend(
                 eq(RedisDomainEventPublisher.ROUND_STARTED_CHANNEL),
-                contains("\"endsAt\":\"2026-07-07T12:01:00Z\"")
+                contains("\"mode\":\"ALL_DRAW\"")
         );
     }
 
@@ -76,6 +79,28 @@ class RedisDomainEventPublisherTest {
         verify(redisTemplate).convertAndSend(
                 eq(RedisDomainEventPublisher.ROUND_FINISHED_CHANNEL),
                 contains("\"reason\":\"TIMEOUT\"")
+        );
+    }
+
+    @Test
+    void publishesVoteCastEventToExpectedChannel() {
+        RedisDomainEventPublisher publisher = new RedisDomainEventPublisher(redisTemplate, new ObjectMapper());
+
+        publisher.publishVoteCast(new VoteCastEvent(
+                "ABC123",
+                UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                UUID.fromString("33333333-3333-3333-3333-333333333333"),
+                List.of(new VoteCastEvent.VoteTallyPayload(
+                        UUID.fromString("33333333-3333-3333-3333-333333333333"),
+                        1
+                )),
+                Instant.parse("2026-07-07T12:00:05Z")
+        ));
+
+        verify(redisTemplate).convertAndSend(
+                eq(RedisDomainEventPublisher.VOTE_CAST_CHANNEL),
+                contains("\"candidateId\":\"33333333-3333-3333-3333-333333333333\"")
         );
     }
 }

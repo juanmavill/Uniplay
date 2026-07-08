@@ -3,6 +3,7 @@ package edu.eci.uniplay.game.infrastructure.config;
 import java.time.Clock;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.eci.uniplay.game.application.port.in.CastVoteUseCase;
 import edu.eci.uniplay.game.application.port.in.ExpireRoundUseCase;
 import edu.eci.uniplay.game.application.port.in.GetGameStateUseCase;
 import edu.eci.uniplay.game.application.port.in.StartRoundUseCase;
@@ -10,6 +11,7 @@ import edu.eci.uniplay.game.application.port.in.SubmitAnswerUseCase;
 import edu.eci.uniplay.game.application.port.out.DomainEventPublisher;
 import edu.eci.uniplay.game.application.port.out.GameSessionRepository;
 import edu.eci.uniplay.game.application.port.out.WordDeckProvider;
+import edu.eci.uniplay.game.application.service.CastVoteService;
 import edu.eci.uniplay.game.application.service.ExpireRoundService;
 import edu.eci.uniplay.game.application.service.GetGameStateService;
 import edu.eci.uniplay.game.application.service.StartRoundService;
@@ -89,6 +91,15 @@ public class GameServiceConfiguration {
             Clock clock
     ) {
         return new ExpireRoundService(gameSessionRepository, domainEventPublisher, clock);
+    }
+
+    @Bean
+    CastVoteUseCase castVoteUseCase(
+            GameSessionRepository gameSessionRepository,
+            DomainEventPublisher domainEventPublisher,
+            Clock clock
+    ) {
+        return new CastVoteService(gameSessionRepository, domainEventPublisher, clock);
     }
 
     @Bean

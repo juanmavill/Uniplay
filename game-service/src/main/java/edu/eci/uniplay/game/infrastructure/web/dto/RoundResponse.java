@@ -7,6 +7,7 @@ import edu.eci.uniplay.game.application.dto.RoundResult;
 
 public record RoundResponse(
         UUID roundId,
+        String mode,
         String status,
         String word,
         UUID guessedBy,
@@ -18,6 +19,7 @@ public record RoundResponse(
     static RoundResponse from(RoundResult result) {
         return new RoundResponse(
                 result.roundId(),
+                result.mode(),
                 result.status(),
                 result.word(),
                 result.guessedBy(),
