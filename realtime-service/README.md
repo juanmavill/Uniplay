@@ -24,6 +24,23 @@ Topic para recibir deltas de la sala:
 /topic/rooms/{roomCode}/draw
 ```
 
+Topic para recibir eventos de ronda y temporizador:
+
+```text
+/topic/rooms/{roomCode}/rounds
+```
+
+Eventos reenviados desde Redis:
+
+| Canal Redis | Tipo STOMP |
+|---|---|
+| `ronda.iniciada` | `ROUND_STARTED` |
+| `ronda.terminada` | `ROUND_FINISHED` |
+| `palabra.adivinada` | `WORD_GUESSED` |
+
+Para sincronizar temporizadores, los clientes deben usar `startedAt` y `endsAt`
+del evento `ROUND_STARTED` como fuente de verdad y calcular el contador local.
+
 Payload:
 
 ```json

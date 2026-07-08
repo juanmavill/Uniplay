@@ -23,7 +23,8 @@ Location: /games/{codigo}
   "roundId": "11111111-1111-1111-1111-111111111111",
   "word": "Campus",
   "status": "ACTIVE",
-  "startedAt": "2026-07-07T12:00:00Z"
+  "startedAt": "2026-07-07T12:00:00Z",
+  "endsAt": "2026-07-07T12:01:00Z"
 }
 ```
 
@@ -68,6 +69,7 @@ GET /games/{codigo}
     "word": "Campus",
     "guessedBy": "22222222-2222-2222-2222-222222222222",
     "startedAt": "2026-07-07T12:00:00Z",
+    "endsAt": "2026-07-07T12:01:00Z",
     "finishedAt": "2026-07-07T12:00:05Z"
   },
   "scores": [
@@ -79,11 +81,32 @@ GET /games/{codigo}
 }
 ```
 
+### Cerrar ronda por temporizador
+
+```http
+POST /games/{codigo}/rounds/{roundId}/timeout
+```
+
+Este endpoint marca la ronda como `EXPIRED` cuando `endsAt` ya fue alcanzado.
+La hora absoluta `endsAt` permite que todos los clientes dibujen el mismo
+contador localmente sin depender de ticks enviados por el servidor.
+
+```json
+{
+  "roomCode": "ABC123",
+  "roundId": "11111111-1111-1111-1111-111111111111",
+  "status": "EXPIRED",
+  "reason": "TIMEOUT",
+  "finishedAt": "2026-07-07T12:01:00Z"
+}
+```
+
 ## Eventos publicados
 
 | Canal Redis | Momento |
 |---|---|
 | `ronda.iniciada` | Despues de persistir una nueva ronda activa |
+| `ronda.terminada` | Despues de adivinar la palabra o vencer el temporizador |
 | `palabra.adivinada` | Despues de sumar puntos y cerrar la ronda |
 
 ## Persistencia
@@ -98,6 +121,7 @@ puntajes por jugador.
 |---|---|
 | `GAME_SERVICE_PORT` | `8082` |
 | `GAME_POINTS_PER_CORRECT_ANSWER` | `100` |
+| `GAME_ROUND_DURATION` | `PT1M` |
 | `GAME_SESSION_TTL` | `PT2H` |
 | `REDIS_HOST` | `localhost` |
 | `REDIS_PORT` | `6379` |
