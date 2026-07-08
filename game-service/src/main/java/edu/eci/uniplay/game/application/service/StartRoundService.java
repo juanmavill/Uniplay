@@ -14,6 +14,7 @@ import edu.eci.uniplay.game.application.port.out.DomainEventPublisher;
 import edu.eci.uniplay.game.application.port.out.GameSessionRepository;
 import edu.eci.uniplay.game.application.port.out.WordDeckProvider;
 import edu.eci.uniplay.game.domain.model.GameSession;
+import edu.eci.uniplay.game.domain.model.PlayerId;
 import edu.eci.uniplay.game.domain.model.RoomCode;
 import edu.eci.uniplay.game.domain.model.RoundMode;
 import edu.eci.uniplay.game.domain.model.Round;
@@ -57,8 +58,9 @@ public class StartRoundService implements StartRoundUseCase {
         String deck = selectedDeck(command.deck());
         SecretWord secretWord = wordDeckProvider.nextWord(roomCode, deck);
         RoundId roundId = new RoundId(UUID.randomUUID());
+        PlayerId drawerId = command.drawerId() == null ? null : new PlayerId(command.drawerId());
 
-        GameSession updatedSession = session.startRound(roundId, secretWord, mode, startedAt, endsAt);
+        GameSession updatedSession = session.startRound(roundId, secretWord, mode, drawerId, startedAt, endsAt);
         gameSessionRepository.save(updatedSession);
         domainEventPublisher.publishRoundStarted(new RoundStartedEvent(
                 roomCode.value(),
@@ -76,6 +78,7 @@ public class StartRoundService implements StartRoundUseCase {
                 roomCode.value(),
                 round.id().value(),
                 round.secretWord().value(),
+                round.drawerId() == null ? null : round.drawerId().value(),
                 round.mode().name(),
                 deck,
                 round.status().name(),

@@ -7,6 +7,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import edu.eci.uniplay.game.application.dto.StartRoundCommand;
 import edu.eci.uniplay.game.application.dto.StartRoundResult;
@@ -39,10 +40,16 @@ class StartRoundServiceTest {
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
 
-        StartRoundResult result = service.startRound(new StartRoundCommand("abc123", "ALL_DRAW", "sistemas"));
+        StartRoundResult result = service.startRound(new StartRoundCommand(
+                "abc123",
+                "ALL_DRAW",
+                "sistemas",
+                UUID.fromString("22222222-2222-2222-2222-222222222222")
+        ));
 
         assertThat(result.roomCode()).isEqualTo("ABC123");
         assertThat(result.word()).isEqualTo("Campus");
+        assertThat(result.drawerId()).isEqualTo(UUID.fromString("22222222-2222-2222-2222-222222222222"));
         assertThat(result.mode()).isEqualTo("ALL_DRAW");
         assertThat(result.deck()).isEqualTo("SISTEMAS");
         assertThat(result.status()).isEqualTo("ACTIVE");

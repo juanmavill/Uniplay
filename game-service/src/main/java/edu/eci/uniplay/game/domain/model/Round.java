@@ -8,6 +8,7 @@ public record Round(
         RoundId id,
         SecretWord secretWord,
         RoundMode mode,
+        PlayerId drawerId,
         RoundStatus status,
         Instant startedAt,
         Instant endsAt,
@@ -52,7 +53,11 @@ public record Round(
     }
 
     public static Round start(RoundId id, SecretWord secretWord, RoundMode mode, Instant startedAt, Instant endsAt) {
-        return new Round(id, secretWord, mode, RoundStatus.ACTIVE, startedAt, endsAt, null, null, Map.of());
+        return start(id, secretWord, mode, null, startedAt, endsAt);
+    }
+
+    public static Round start(RoundId id, SecretWord secretWord, RoundMode mode, PlayerId drawerId, Instant startedAt, Instant endsAt) {
+        return new Round(id, secretWord, mode, drawerId, RoundStatus.ACTIVE, startedAt, endsAt, null, null, Map.of());
     }
 
     public boolean isActive() {
@@ -67,6 +72,10 @@ public record Round(
         return secretWord.matches(answer);
     }
 
+    public boolean isDrawnBy(PlayerId playerId) {
+        return drawerId != null && drawerId.equals(playerId);
+    }
+
     public Round finish(PlayerId playerId, Instant finishedAt) {
         if (!isActive()) {
             throw new RoundNotActiveException("round " + id.value() + " is not active");
@@ -75,7 +84,7 @@ public record Round(
             throw new RoundExpiredException("round " + id.value() + " expired at " + endsAt);
         }
 
-        return new Round(id, secretWord, mode, RoundStatus.FINISHED, startedAt, endsAt, playerId, finishedAt, votes);
+        return new Round(id, secretWord, mode, drawerId, RoundStatus.FINISHED, startedAt, endsAt, playerId, finishedAt, votes);
     }
 
     public Round expire(Instant expiredAt) {
@@ -86,7 +95,7 @@ public record Round(
             throw new RoundNotExpiredException("round " + id.value() + " has not expired yet");
         }
 
-        return new Round(id, secretWord, mode, RoundStatus.EXPIRED, startedAt, endsAt, null, expiredAt, votes);
+        return new Round(id, secretWord, mode, drawerId, RoundStatus.EXPIRED, startedAt, endsAt, null, expiredAt, votes);
     }
 
     public Round castVote(PlayerId voterId, PlayerId candidateId) {
@@ -105,7 +114,7 @@ public record Round(
 
         Map<PlayerId, PlayerId> updatedVotes = new LinkedHashMap<>(votes);
         updatedVotes.put(voterId, candidateId);
-        return new Round(id, secretWord, mode, status, startedAt, endsAt, guessedBy, finishedAt, updatedVotes);
+        return new Round(id, secretWord, mode, drawerId, status, startedAt, endsAt, guessedBy, finishedAt, updatedVotes);
     }
 
     public Map<PlayerId, Integer> voteTallies() {

@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -66,7 +67,8 @@ public class GameController {
         StartRoundResult result = startRoundUseCase.startRound(new StartRoundCommand(
                 roomCode,
                 request == null ? null : request.mode(),
-                request == null ? null : request.deck()
+                request == null ? null : request.deck(),
+                request == null ? null : request.drawerId()
         ));
         return ResponseEntity
                 .created(URI.create("/games/" + result.roomCode()))
@@ -108,8 +110,11 @@ public class GameController {
     }
 
     @GetMapping
-    GameStateResponse getState(@PathVariable String roomCode) {
-        GameStateResult result = getGameStateUseCase.getState(roomCode);
+    GameStateResponse getState(
+            @PathVariable String roomCode,
+            @RequestParam(required = false) UUID viewerPlayerId
+    ) {
+        GameStateResult result = getGameStateUseCase.getState(roomCode, viewerPlayerId);
         return GameStateResponse.from(result);
     }
 }

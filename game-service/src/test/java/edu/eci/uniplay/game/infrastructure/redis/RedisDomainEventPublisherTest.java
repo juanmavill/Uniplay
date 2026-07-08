@@ -9,6 +9,7 @@ import edu.eci.uniplay.game.application.event.RoundFinishedEvent;
 import edu.eci.uniplay.game.application.event.RoundGuessedEvent;
 import edu.eci.uniplay.game.application.event.RoundStartedEvent;
 import edu.eci.uniplay.game.application.event.VoteCastEvent;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -18,6 +19,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(MockitoExtension.class)
 class RedisDomainEventPublisherTest {
@@ -40,10 +42,10 @@ class RedisDomainEventPublisherTest {
                 Instant.parse("2026-07-07T12:00:00Z")
         ));
 
-        verify(redisTemplate).convertAndSend(
-                eq(RedisDomainEventPublisher.ROUND_STARTED_CHANNEL),
-                contains("\"deck\":\"SISTEMAS\"")
-        );
+        ArgumentCaptor<String> payloadCaptor = ArgumentCaptor.forClass(String.class);
+        verify(redisTemplate).convertAndSend(eq(RedisDomainEventPublisher.ROUND_STARTED_CHANNEL), payloadCaptor.capture());
+        assertThat(payloadCaptor.getValue()).contains("\"deck\":\"SISTEMAS\"");
+        assertThat(payloadCaptor.getValue()).doesNotContain("\"word\"");
     }
 
     @Test

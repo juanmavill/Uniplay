@@ -8,6 +8,7 @@ public record RoundResult(
         String mode,
         String status,
         String word,
+        UUID drawerId,
         UUID guessedBy,
         Instant startedAt,
         Instant endsAt,

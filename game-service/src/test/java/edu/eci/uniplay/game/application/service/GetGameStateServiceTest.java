@@ -24,7 +24,7 @@ class GetGameStateServiceTest {
     void returnsEmptyStateWhenSessionDoesNotExist() {
         GetGameStateService service = new GetGameStateService(repositoryReturning(null));
 
-        GameStateResult result = service.getState("ABC123");
+        GameStateResult result = service.getState("ABC123", null);
 
         assertThat(result.roomCode()).isEqualTo("ABC123");
         assertThat(result.round()).isNull();
@@ -47,7 +47,7 @@ class GetGameStateServiceTest {
         );
         GetGameStateService service = new GetGameStateService(repositoryReturning(session));
 
-        GameStateResult result = service.getState("ABC123");
+        GameStateResult result = service.getState("ABC123", null);
 
         assertThat(result.round().word()).isEqualTo("Campus");
         assertThat(result.round().endsAt()).isEqualTo(Instant.parse("2026-07-07T12:01:00Z"));
@@ -55,6 +55,30 @@ class GetGameStateServiceTest {
             assertThat(score.playerId()).isEqualTo(playerId.value());
             assertThat(score.score()).isEqualTo(100);
         });
+    }
+
+    @Test
+    void hidesWordWhenViewerIsNotDrawer() {
+        PlayerId drawerId = new PlayerId(UUID.fromString("22222222-2222-2222-2222-222222222222"));
+        PlayerId guesserId = new PlayerId(UUID.fromString("33333333-3333-3333-3333-333333333333"));
+        GameSession session = GameSession.restore(
+                new RoomCode("ABC123"),
+                Round.start(
+                        new RoundId(UUID.fromString("11111111-1111-1111-1111-111111111111")),
+                        new SecretWord("Campus"),
+                        RoundMode.CLASSIC,
+                        drawerId,
+                        Instant.parse("2026-07-07T12:00:00Z"),
+                        Instant.parse("2026-07-07T12:01:00Z")
+                ),
+                Map.of()
+        );
+        GetGameStateService service = new GetGameStateService(repositoryReturning(session));
+
+        GameStateResult result = service.getState("ABC123", guesserId.value());
+
+        assertThat(result.round().word()).isNull();
+        assertThat(result.round().drawerId()).isEqualTo(drawerId.value());
     }
 
     private static GameSessionRepository repositoryReturning(GameSession session) {

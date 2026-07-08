@@ -26,16 +26,23 @@ public final class GameSession {
     }
 
     public GameSession startRound(RoundId roundId, SecretWord secretWord, RoundMode mode, Instant startedAt, Instant endsAt) {
+        return startRound(roundId, secretWord, mode, null, startedAt, endsAt);
+    }
+
+    public GameSession startRound(RoundId roundId, SecretWord secretWord, RoundMode mode, PlayerId drawerId, Instant startedAt, Instant endsAt) {
         if (round != null && round.isActive()) {
             throw new RoundAlreadyActiveException("room " + roomCode.value() + " already has an active round");
         }
 
-        return new GameSession(roomCode, Round.start(roundId, secretWord, mode, startedAt, endsAt), scores);
+        return new GameSession(roomCode, Round.start(roundId, secretWord, mode, drawerId, startedAt, endsAt), scores);
     }
 
     public AnswerEvaluation submitAnswer(PlayerId playerId, String answer, int points, Instant answeredAt) {
         if (round == null || !round.isActive()) {
             throw new RoundNotActiveException("room " + roomCode.value() + " does not have an active round");
+        }
+        if (round.isDrawnBy(playerId)) {
+            throw new DrawingPlayerCannotGuessException("drawing player cannot guess their own round");
         }
 
         int currentScore = scoreOf(playerId);

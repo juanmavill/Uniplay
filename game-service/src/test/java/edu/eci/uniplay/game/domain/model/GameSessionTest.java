@@ -60,6 +60,16 @@ class GameSessionTest {
     }
 
     @Test
+    void rejectsAnswerFromDrawer() {
+        GameSession session = GameSession.newFor(ROOM_CODE)
+                .startRound(ROUND_ID, new SecretWord("Biblioteca"), RoundMode.CLASSIC, PLAYER_ID, STARTED_AT, ENDS_AT);
+
+        assertThatThrownBy(() -> session.submitAnswer(PLAYER_ID, "biblioteca", 100, ANSWERED_AT))
+                .isInstanceOf(DrawingPlayerCannotGuessException.class)
+                .hasMessageContaining("cannot guess");
+    }
+
+    @Test
     void wrongAnswerKeepsCurrentScoreAndRoundActive() {
         GameSession session = GameSession.newFor(ROOM_CODE)
                 .startRound(ROUND_ID, new SecretWord("Biblioteca"), RoundMode.CLASSIC, STARTED_AT, ENDS_AT);

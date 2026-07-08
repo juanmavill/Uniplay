@@ -1,4 +1,6 @@
 package edu.eci.uniplay.game.application.dto;
 
-public record StartRoundCommand(String roomCode, String mode, String deck) {
+import java.util.UUID;
+
+public record StartRoundCommand(String roomCode, String mode, String deck, UUID drawerId) {
 }

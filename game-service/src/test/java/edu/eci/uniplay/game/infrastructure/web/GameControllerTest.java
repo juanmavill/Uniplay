@@ -71,6 +71,7 @@ class GameControllerTest {
                 "ABC123",
                 ROUND_ID,
                 "Campus",
+                PLAYER_ID,
                 "ALL_DRAW",
                 "SISTEMAS",
                 "ACTIVE",
@@ -83,13 +84,15 @@ class GameControllerTest {
                         .content("""
                                 {
                                   "mode": "ALL_DRAW",
-                                  "deck": "sistemas"
+                                  "deck": "sistemas",
+                                  "drawerId": "22222222-2222-2222-2222-222222222222"
                                 }
                                 """))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/games/ABC123"))
                 .andExpect(jsonPath("$.roomCode").value("ABC123"))
                 .andExpect(jsonPath("$.word").value("Campus"))
+                .andExpect(jsonPath("$.drawerId").value(PLAYER_ID.toString()))
                 .andExpect(jsonPath("$.mode").value("ALL_DRAW"))
                 .andExpect(jsonPath("$.deck").value("SISTEMAS"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
@@ -100,6 +103,7 @@ class GameControllerTest {
         assertThat(captor.getValue().roomCode()).isEqualTo("abc123");
         assertThat(captor.getValue().mode()).isEqualTo("ALL_DRAW");
         assertThat(captor.getValue().deck()).isEqualTo("sistemas");
+        assertThat(captor.getValue().drawerId()).isEqualTo(PLAYER_ID);
     }
 
     @Test
@@ -135,15 +139,16 @@ class GameControllerTest {
 
     @Test
     void returnsGameState() throws Exception {
-        when(getGameStateUseCase.getState("ABC123")).thenReturn(new GameStateResult(
+        when(getGameStateUseCase.getState("ABC123", PLAYER_ID)).thenReturn(new GameStateResult(
                 "ABC123",
-                new RoundResult(ROUND_ID, "ALL_DRAW", "ACTIVE", "Campus", null, NOW, NOW.plusSeconds(60), null),
+                new RoundResult(ROUND_ID, "ALL_DRAW", "ACTIVE", "Campus", PLAYER_ID, null, NOW, NOW.plusSeconds(60), null),
                 List.of(new ScoreResult(PLAYER_ID, 100))
         ));
 
-        mockMvc.perform(get("/games/ABC123"))
+        mockMvc.perform(get("/games/ABC123").param("viewerPlayerId", PLAYER_ID.toString()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.round.word").value("Campus"))
+                .andExpect(jsonPath("$.round.drawerId").value(PLAYER_ID.toString()))
                 .andExpect(jsonPath("$.round.mode").value("ALL_DRAW"))
                 .andExpect(jsonPath("$.round.endsAt").value("2026-07-07T12:01:00Z"))
                 .andExpect(jsonPath("$.scores[0].playerId").value(PLAYER_ID.toString()))

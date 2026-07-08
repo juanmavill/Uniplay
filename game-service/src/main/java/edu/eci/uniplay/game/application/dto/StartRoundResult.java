@@ -7,6 +7,7 @@ public record StartRoundResult(
         String roomCode,
         UUID roundId,
         String word,
+        UUID drawerId,
         String mode,
         String deck,
         String status,

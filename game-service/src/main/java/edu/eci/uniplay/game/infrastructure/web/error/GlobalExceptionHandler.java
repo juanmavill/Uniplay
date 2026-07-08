@@ -1,6 +1,7 @@
 package edu.eci.uniplay.game.infrastructure.web.error;
 
 import edu.eci.uniplay.game.domain.model.DuplicateVoteException;
+import edu.eci.uniplay.game.domain.model.DrawingPlayerCannotGuessException;
 import edu.eci.uniplay.game.domain.model.RoundAlreadyActiveException;
 import edu.eci.uniplay.game.domain.model.RoundExpiredException;
 import edu.eci.uniplay.game.domain.model.RoundNotExpiredException;
@@ -39,6 +40,7 @@ public class GlobalExceptionHandler {
             RoundNotActiveException.class,
             RoundNotExpiredException.class,
             DuplicateVoteException.class,
+            DrawingPlayerCannotGuessException.class,
             SelfVoteException.class,
             VotingNotEnabledException.class
     })

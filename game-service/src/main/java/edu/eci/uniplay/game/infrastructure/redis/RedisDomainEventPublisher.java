@@ -82,7 +82,6 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
     private record RoundStartedPayload(
             String roomCode,
             String roundId,
-            String word,
             String mode,
             String deck,
             String startedAt,
@@ -94,7 +93,6 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
             return new RoundStartedPayload(
                     event.roomCode(),
                     event.roundId().toString(),
-                    event.word(),
                     event.mode(),
                     event.deck(),
                     event.startedAt().toString(),
