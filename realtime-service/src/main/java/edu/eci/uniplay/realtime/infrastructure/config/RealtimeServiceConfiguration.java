@@ -6,8 +6,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.eci.uniplay.realtime.application.port.in.BroadcastDrawingUseCase;
 import edu.eci.uniplay.realtime.application.port.out.DrawingMessageBroker;
 import edu.eci.uniplay.realtime.application.port.out.RoundEventBroker;
+import edu.eci.uniplay.realtime.application.port.out.VoiceEventBroker;
 import edu.eci.uniplay.realtime.application.service.BroadcastDrawingService;
 import edu.eci.uniplay.realtime.infrastructure.redis.RedisRoundEventSubscriber;
+import edu.eci.uniplay.realtime.infrastructure.redis.RedisVoiceEventSubscriber;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -35,9 +37,15 @@ public class RealtimeServiceConfiguration {
     }
 
     @Bean
+    RedisVoiceEventSubscriber redisVoiceEventSubscriber(ObjectMapper objectMapper, VoiceEventBroker voiceEventBroker) {
+        return new RedisVoiceEventSubscriber(objectMapper, voiceEventBroker);
+    }
+
+    @Bean
     RedisMessageListenerContainer redisMessageListenerContainer(
             RedisConnectionFactory redisConnectionFactory,
-            RedisRoundEventSubscriber redisRoundEventSubscriber
+            RedisRoundEventSubscriber redisRoundEventSubscriber,
+            RedisVoiceEventSubscriber redisVoiceEventSubscriber
     ) {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(redisConnectionFactory);
@@ -45,6 +53,7 @@ public class RealtimeServiceConfiguration {
         container.addMessageListener(redisRoundEventSubscriber, new ChannelTopic(RedisRoundEventSubscriber.ROUND_FINISHED_CHANNEL));
         container.addMessageListener(redisRoundEventSubscriber, new ChannelTopic(RedisRoundEventSubscriber.ROUND_GUESSED_CHANNEL));
         container.addMessageListener(redisRoundEventSubscriber, new ChannelTopic(RedisRoundEventSubscriber.VOTE_CAST_CHANNEL));
+        container.addMessageListener(redisVoiceEventSubscriber, new ChannelTopic(RedisVoiceEventSubscriber.SPEAKING_STATE_CHANGED_CHANNEL));
         return container;
     }
 }

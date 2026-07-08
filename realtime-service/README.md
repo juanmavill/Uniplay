@@ -30,6 +30,12 @@ Topic para recibir eventos de ronda y temporizador:
 /topic/rooms/{roomCode}/rounds
 ```
 
+Topic para recibir indicadores de voz:
+
+```text
+/topic/rooms/{roomCode}/voice
+```
+
 Eventos reenviados desde Redis:
 
 | Canal Redis | Tipo STOMP |
@@ -43,6 +49,12 @@ Para sincronizar temporizadores, los clientes deben usar `startedAt` y `endsAt`
 del evento `ROUND_STARTED` como fuente de verdad y calcular el contador local.
 Los votos del modo `ALL_DRAW` llegan al mismo topic con `voterId`,
 `candidateId` y `tallies`.
+
+Eventos de voz reenviados desde Redis:
+
+| Canal Redis | Tipo STOMP |
+|---|---|
+| `voz.jugador_hablando` | `VOICE_SPEAKING_CHANGED` |
 
 Payload:
 
