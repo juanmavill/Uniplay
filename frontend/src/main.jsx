@@ -49,7 +49,7 @@ function App() {
   const [roundLimit, setRoundLimit] = React.useState(() => clampRoundLimit(localStorage.getItem("uniplay.roundLimit") || DEFAULT_ROUND_LIMIT));
   const [roundsStarted, setRoundsStarted] = React.useState(0);
   const [candidateId, setCandidateId] = React.useState("");
-  const [voice, setVoice] = React.useState({ connected: false, muted: true, speaking: false, roomName: "" });
+  const [voice, setVoice] = React.useState({ connected: false, muted: true, roomName: "" });
   const [stompState, setStompState] = React.useState("offline");
   const [turnNumber, setTurnNumber] = React.useState(0);
   const [isBusy, setIsBusy] = React.useState(false);
@@ -273,6 +273,7 @@ function App() {
   }
 
   function goToLobby() {
+    disconnectVoice();
     window.history.pushState({}, "", "/");
     setRoute(null);
     setRoom(null);
@@ -416,22 +417,37 @@ function App() {
       if (!player?.playerId || !currentRoomCode) {
         throw new Error("Unete a una sala antes de activar voz");
       }
+      livekitRoomRef.current?.disconnect();
+      document.querySelectorAll("[data-uniplay-voice-audio='remote']").forEach((element) => element.remove());
       const token = await api.createVoiceToken(currentRoomCode, player.playerId, player.playerName);
       const lkRoom = new Room({ adaptiveStream: true, dynacast: true });
       lkRoom.on(RoomEvent.TrackSubscribed, (track) => {
         if (track.kind === Track.Kind.Audio) {
           const element = track.attach();
           element.autoplay = true;
+          element.dataset.uniplayVoiceAudio = "remote";
           document.body.appendChild(element);
         }
       });
+      lkRoom.on(RoomEvent.TrackUnsubscribed, (track) => {
+        track.detach().forEach((element) => element.remove());
+      });
       lkRoom.on(RoomEvent.Disconnected, () => {
-        setVoice((previous) => ({ ...previous, connected: false, muted: true, speaking: false }));
+        document.querySelectorAll("[data-uniplay-voice-audio='remote']").forEach((element) => element.remove());
+        livekitRoomRef.current = null;
+        setVoice((previous) => ({ ...previous, connected: false, muted: true }));
       });
       await lkRoom.connect(token.livekitUrl, token.token);
       livekitRoomRef.current = lkRoom;
-      setVoice({ connected: true, muted: true, speaking: false, roomName: token.voiceRoomName });
+      setVoice({ connected: true, muted: true, roomName: token.voiceRoomName });
     });
+  }
+
+  function disconnectVoice() {
+    livekitRoomRef.current?.disconnect();
+    livekitRoomRef.current = null;
+    document.querySelectorAll("[data-uniplay-voice-audio='remote']").forEach((element) => element.remove());
+    setVoice({ connected: false, muted: true, roomName: "" });
   }
 
   async function toggleMute() {
@@ -439,22 +455,13 @@ function App() {
       if (!player?.playerId || !currentRoomCode) {
         throw new Error("Unete a una sala antes de cambiar microfono");
       }
-      const nextMuted = !voice.muted;
-      if (livekitRoomRef.current) {
-        await livekitRoomRef.current.localParticipant.setMicrophoneEnabled(!nextMuted);
+      if (!voice.connected || !livekitRoomRef.current) {
+        throw new Error("Entra al canal de voz antes de activar el microfono");
       }
+      const nextMuted = !voice.muted;
+      await livekitRoomRef.current.localParticipant.setMicrophoneEnabled(!nextMuted);
       const result = await api.setMuted(currentRoomCode, player.playerId, nextMuted);
       setVoice((previous) => ({ ...previous, muted: result.muted }));
-    });
-  }
-
-  async function toggleSpeaking() {
-    await runAction(async () => {
-      if (!player?.playerId || !currentRoomCode) {
-        throw new Error("Unete a una sala antes de reportar voz");
-      }
-      const result = await api.setSpeaking(currentRoomCode, player.playerId, !voice.speaking);
-      setVoice((previous) => ({ ...previous, speaking: result.speaking }));
     });
   }
 
@@ -669,24 +676,26 @@ function App() {
             <div className="voice-status">
               <span className={voice.connected ? "pulse on" : "pulse"} />
               <div>
-                <strong>{voice.connected ? "Conectado" : "Sin voz"}</strong>
+                <strong>{voice.connected ? voice.muted ? "Escuchando" : "Microfono activo" : "Sin voz"}</strong>
                 <small>{voice.roomName || "Canal de sala"}</small>
               </div>
             </div>
             <div className="button-row">
-              <button onClick={connectVoice} disabled={isBusy || voice.connected}>
-                <Mic size={16} />
-                Entrar
-              </button>
-              <button onClick={toggleMute} disabled={isBusy || !player}>
+              {voice.connected ? (
+                <button onClick={disconnectVoice} disabled={isBusy}>
+                  Salir de voz
+                </button>
+              ) : (
+                <button className="primary" onClick={connectVoice} disabled={isBusy || !player?.playerId}>
+                  <Mic size={16} />
+                  Entrar a voz
+                </button>
+              )}
+              <button onClick={toggleMute} disabled={isBusy || !voice.connected}>
                 {voice.muted ? <MicOff size={16} /> : <Mic size={16} />}
-                {voice.muted ? "Activar" : "Mute"}
+                {voice.muted ? "Activar microfono" : "Silenciar"}
               </button>
             </div>
-            <label className="toggle-row">
-              <input type="checkbox" checked={voice.speaking} onChange={toggleSpeaking} />
-              Hablando
-            </label>
           </section>
 
           {isAllDrawMode && (
@@ -889,7 +898,6 @@ function createApiClient(baseUrl) {
     castVote: (code, roundId, voterId, candidateId) => request(normalizedBaseUrl, `/games/${code}/rounds/${roundId}/votes`, { method: "POST", body: { voterId, candidateId } }),
     createVoiceToken: (roomCode, playerId, playerName) => request(normalizedBaseUrl, "/voice/token", { method: "POST", body: { roomCode, playerId, playerName } }),
     setMuted: (roomCode, playerId, muted) => request(normalizedBaseUrl, "/voice/mute", { method: "POST", body: { roomCode, playerId, muted } }),
-    setSpeaking: (roomCode, playerId, speaking) => request(normalizedBaseUrl, "/voice/speaking", { method: "POST", body: { roomCode, playerId, speaking } })
   };
 }
 
@@ -964,9 +972,6 @@ function eventType(payload) {
 function handleVoiceEvent(payload, setVoice) {
   if (typeof payload?.muted === "boolean") {
     setVoice((previous) => ({ ...previous, muted: payload.muted }));
-  }
-  if (typeof payload?.speaking === "boolean") {
-    setVoice((previous) => ({ ...previous, speaking: payload.speaking }));
   }
 }
 
