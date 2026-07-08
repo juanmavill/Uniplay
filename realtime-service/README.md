@@ -37,9 +37,12 @@ Eventos reenviados desde Redis:
 | `ronda.iniciada` | `ROUND_STARTED` |
 | `ronda.terminada` | `ROUND_FINISHED` |
 | `palabra.adivinada` | `WORD_GUESSED` |
+| `voto.emitido` | `VOTE_CAST` |
 
 Para sincronizar temporizadores, los clientes deben usar `startedAt` y `endsAt`
 del evento `ROUND_STARTED` como fuente de verdad y calcular el contador local.
+Los votos del modo `ALL_DRAW` llegan al mismo topic con `voterId`,
+`candidateId` y `tallies`.
 
 Payload:
 

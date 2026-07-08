@@ -8,7 +8,15 @@ Gestiona rondas, palabras secretas, respuestas por chat y puntajes de UniPlay.
 
 ```http
 POST /games/{codigo}/rounds
+Content-Type: application/json
+
+{
+  "mode": "ALL_DRAW"
+}
 ```
+
+El campo `mode` es opcional. Si se omite, la ronda se crea en modo `CLASSIC`.
+Use `ALL_DRAW` para activar el modo en el que todos dibujan y luego votan.
 
 Respuesta exitosa:
 
@@ -22,6 +30,7 @@ Location: /games/{codigo}
   "roomCode": "ABC123",
   "roundId": "11111111-1111-1111-1111-111111111111",
   "word": "Campus",
+  "mode": "ALL_DRAW",
   "status": "ACTIVE",
   "startedAt": "2026-07-07T12:00:00Z",
   "endsAt": "2026-07-07T12:01:00Z"
@@ -54,6 +63,38 @@ Respuesta exitosa:
 }
 ```
 
+### Votar dibujo
+
+Disponible para rondas creadas con `mode` igual a `ALL_DRAW`.
+
+```http
+POST /games/{codigo}/rounds/{roundId}/votes
+Content-Type: application/json
+
+{
+  "voterId": "22222222-2222-2222-2222-222222222222",
+  "candidateId": "33333333-3333-3333-3333-333333333333"
+}
+```
+
+Respuesta exitosa:
+
+```json
+{
+  "roomCode": "ABC123",
+  "roundId": "11111111-1111-1111-1111-111111111111",
+  "voterId": "22222222-2222-2222-2222-222222222222",
+  "candidateId": "33333333-3333-3333-3333-333333333333",
+  "tallies": [
+    {
+      "candidateId": "33333333-3333-3333-3333-333333333333",
+      "votes": 1
+    }
+  ],
+  "votedAt": "2026-07-07T12:00:45Z"
+}
+```
+
 ### Consultar estado
 
 ```http
@@ -67,6 +108,7 @@ GET /games/{codigo}
     "roundId": "11111111-1111-1111-1111-111111111111",
     "status": "FINISHED",
     "word": "Campus",
+    "mode": "ALL_DRAW",
     "guessedBy": "22222222-2222-2222-2222-222222222222",
     "startedAt": "2026-07-07T12:00:00Z",
     "endsAt": "2026-07-07T12:01:00Z",
@@ -108,6 +150,7 @@ contador localmente sin depender de ticks enviados por el servidor.
 | `ronda.iniciada` | Despues de persistir una nueva ronda activa |
 | `ronda.terminada` | Despues de adivinar la palabra o vencer el temporizador |
 | `palabra.adivinada` | Despues de sumar puntos y cerrar la ronda |
+| `voto.emitido` | Despues de registrar un voto valido en modo todos dibujan |
 
 ## Persistencia
 
