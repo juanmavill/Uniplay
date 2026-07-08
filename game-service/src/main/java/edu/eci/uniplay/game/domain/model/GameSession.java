@@ -52,6 +52,14 @@ public final class GameSession {
         return new AnswerEvaluation(updatedSession, true, newScore, round.id());
     }
 
+    public GameSession expireRound(RoundId roundId, Instant expiredAt) {
+        if (round == null || !round.isActive() || !round.id().equals(roundId)) {
+            throw new RoundNotActiveException("room " + roomCode.value() + " does not have round " + roundId.value() + " active");
+        }
+
+        return new GameSession(roomCode, round.expire(expiredAt), scores);
+    }
+
     public int scoreOf(PlayerId playerId) {
         return scores.getOrDefault(playerId, 0);
     }

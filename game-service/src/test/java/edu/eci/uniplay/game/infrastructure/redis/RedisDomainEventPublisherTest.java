@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.eci.uniplay.game.application.event.RoundFinishedEvent;
 import edu.eci.uniplay.game.application.event.RoundGuessedEvent;
 import edu.eci.uniplay.game.application.event.RoundStartedEvent;
 import org.junit.jupiter.api.Test;
@@ -56,6 +57,25 @@ class RedisDomainEventPublisherTest {
         verify(redisTemplate).convertAndSend(
                 eq(RedisDomainEventPublisher.ROUND_GUESSED_CHANNEL),
                 contains("\"score\":100")
+        );
+    }
+
+    @Test
+    void publishesRoundFinishedEventToExpectedChannel() {
+        RedisDomainEventPublisher publisher = new RedisDomainEventPublisher(redisTemplate, new ObjectMapper());
+
+        publisher.publishRoundFinished(new RoundFinishedEvent(
+                "ABC123",
+                UUID.fromString("11111111-1111-1111-1111-111111111111"),
+                "EXPIRED",
+                "TIMEOUT",
+                Instant.parse("2026-07-07T12:01:00Z"),
+                Instant.parse("2026-07-07T12:01:00Z")
+        ));
+
+        verify(redisTemplate).convertAndSend(
+                eq(RedisDomainEventPublisher.ROUND_FINISHED_CHANNEL),
+                contains("\"reason\":\"TIMEOUT\"")
         );
     }
 }

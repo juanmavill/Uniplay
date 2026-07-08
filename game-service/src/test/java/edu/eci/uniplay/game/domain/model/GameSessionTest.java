@@ -88,4 +88,28 @@ class GameSessionTest {
                 .isInstanceOf(RoundExpiredException.class)
                 .hasMessageContaining("expired at");
     }
+
+    @Test
+    void expiresRoundWhenDeadlineIsReached() {
+        GameSession session = GameSession.newFor(ROOM_CODE)
+                .startRound(ROUND_ID, new SecretWord("Biblioteca"), STARTED_AT, ENDS_AT);
+
+        GameSession updatedSession = session.expireRound(ROUND_ID, ENDS_AT);
+
+        assertThat(updatedSession.round()).get().satisfies(round -> {
+            assertThat(round.status()).isEqualTo(RoundStatus.EXPIRED);
+            assertThat(round.finishedAt()).isEqualTo(ENDS_AT);
+            assertThat(round.guessedBy()).isNull();
+        });
+    }
+
+    @Test
+    void rejectsExpirationBeforeDeadline() {
+        GameSession session = GameSession.newFor(ROOM_CODE)
+                .startRound(ROUND_ID, new SecretWord("Biblioteca"), STARTED_AT, ENDS_AT);
+
+        assertThatThrownBy(() -> session.expireRound(ROUND_ID, ENDS_AT.minusSeconds(1)))
+                .isInstanceOf(RoundNotExpiredException.class)
+                .hasMessageContaining("has not expired yet");
+    }
 }

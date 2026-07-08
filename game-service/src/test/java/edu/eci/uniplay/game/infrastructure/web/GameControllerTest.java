@@ -4,6 +4,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
+import edu.eci.uniplay.game.application.dto.ExpireRoundCommand;
+import edu.eci.uniplay.game.application.dto.ExpireRoundResult;
 import edu.eci.uniplay.game.application.dto.GameStateResult;
 import edu.eci.uniplay.game.application.dto.RoundResult;
 import edu.eci.uniplay.game.application.dto.ScoreResult;
@@ -11,6 +13,7 @@ import edu.eci.uniplay.game.application.dto.StartRoundCommand;
 import edu.eci.uniplay.game.application.dto.StartRoundResult;
 import edu.eci.uniplay.game.application.dto.SubmitAnswerCommand;
 import edu.eci.uniplay.game.application.dto.SubmitAnswerResult;
+import edu.eci.uniplay.game.application.port.in.ExpireRoundUseCase;
 import edu.eci.uniplay.game.application.port.in.GetGameStateUseCase;
 import edu.eci.uniplay.game.application.port.in.StartRoundUseCase;
 import edu.eci.uniplay.game.application.port.in.SubmitAnswerUseCase;
@@ -51,6 +54,9 @@ class GameControllerTest {
 
     @MockBean
     private GetGameStateUseCase getGameStateUseCase;
+
+    @MockBean
+    private ExpireRoundUseCase expireRoundUseCase;
 
     @Test
     void startsRound() throws Exception {
@@ -121,6 +127,27 @@ class GameControllerTest {
                 .andExpect(jsonPath("$.round.endsAt").value("2026-07-07T12:01:00Z"))
                 .andExpect(jsonPath("$.scores[0].playerId").value(PLAYER_ID.toString()))
                 .andExpect(jsonPath("$.scores[0].score").value(100));
+    }
+
+    @Test
+    void expiresRoundByTimer() throws Exception {
+        when(expireRoundUseCase.expireRound(any())).thenReturn(new ExpireRoundResult(
+                "ABC123",
+                ROUND_ID,
+                "EXPIRED",
+                "TIMEOUT",
+                NOW.plusSeconds(60)
+        ));
+
+        mockMvc.perform(post("/games/ABC123/rounds/11111111-1111-1111-1111-111111111111/timeout"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EXPIRED"))
+                .andExpect(jsonPath("$.reason").value("TIMEOUT"))
+                .andExpect(jsonPath("$.finishedAt").value("2026-07-07T12:01:00Z"));
+
+        ArgumentCaptor<ExpireRoundCommand> captor = ArgumentCaptor.forClass(ExpireRoundCommand.class);
+        verify(expireRoundUseCase).expireRound(captor.capture());
+        assertThat(captor.getValue().roundId()).isEqualTo(ROUND_ID);
     }
 
     @Test

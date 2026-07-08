@@ -2,6 +2,7 @@ package edu.eci.uniplay.game.infrastructure.redis;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.eci.uniplay.game.application.event.RoundFinishedEvent;
 import edu.eci.uniplay.game.application.event.RoundGuessedEvent;
 import edu.eci.uniplay.game.application.event.RoundStartedEvent;
 import edu.eci.uniplay.game.application.port.out.DomainEventPublisher;
@@ -11,6 +12,7 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
 
     static final String ROUND_STARTED_CHANNEL = "ronda.iniciada";
     static final String ROUND_GUESSED_CHANNEL = "palabra.adivinada";
+    static final String ROUND_FINISHED_CHANNEL = "ronda.terminada";
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
@@ -35,6 +37,15 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
             redisTemplate.convertAndSend(ROUND_GUESSED_CHANNEL, objectMapper.writeValueAsString(RoundGuessedPayload.from(event)));
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("round guessed event could not be serialized", exception);
+        }
+    }
+
+    @Override
+    public void publishRoundFinished(RoundFinishedEvent event) {
+        try {
+            redisTemplate.convertAndSend(ROUND_FINISHED_CHANNEL, objectMapper.writeValueAsString(RoundFinishedPayload.from(event)));
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("round finished event could not be serialized", exception);
         }
     }
 
@@ -73,6 +84,27 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
                     event.roundId().toString(),
                     event.playerId().toString(),
                     event.score(),
+                    event.occurredAt().toString()
+            );
+        }
+    }
+
+    private record RoundFinishedPayload(
+            String roomCode,
+            String roundId,
+            String status,
+            String reason,
+            String finishedAt,
+            String occurredAt
+    ) {
+
+        static RoundFinishedPayload from(RoundFinishedEvent event) {
+            return new RoundFinishedPayload(
+                    event.roomCode(),
+                    event.roundId().toString(),
+                    event.status(),
+                    event.reason(),
+                    event.finishedAt().toString(),
                     event.occurredAt().toString()
             );
         }

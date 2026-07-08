@@ -10,6 +10,7 @@ import java.util.Optional;
 
 import edu.eci.uniplay.game.application.dto.StartRoundCommand;
 import edu.eci.uniplay.game.application.dto.StartRoundResult;
+import edu.eci.uniplay.game.application.event.RoundFinishedEvent;
 import edu.eci.uniplay.game.application.event.RoundGuessedEvent;
 import edu.eci.uniplay.game.application.event.RoundStartedEvent;
 import edu.eci.uniplay.game.application.port.out.DomainEventPublisher;
@@ -81,6 +82,10 @@ class StartRoundServiceTest {
 
         @Override
         public void publishRoundGuessed(RoundGuessedEvent event) {
+        }
+
+        @Override
+        public void publishRoundFinished(RoundFinishedEvent event) {
         }
     }
 }

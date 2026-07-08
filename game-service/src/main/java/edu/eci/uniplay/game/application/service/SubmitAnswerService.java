@@ -5,6 +5,7 @@ import java.time.Instant;
 
 import edu.eci.uniplay.game.application.dto.SubmitAnswerCommand;
 import edu.eci.uniplay.game.application.dto.SubmitAnswerResult;
+import edu.eci.uniplay.game.application.event.RoundFinishedEvent;
 import edu.eci.uniplay.game.application.event.RoundGuessedEvent;
 import edu.eci.uniplay.game.application.port.in.SubmitAnswerUseCase;
 import edu.eci.uniplay.game.application.port.out.DomainEventPublisher;
@@ -16,6 +17,8 @@ import edu.eci.uniplay.game.domain.model.RoomCode;
 import edu.eci.uniplay.game.domain.model.RoundStatus;
 
 public class SubmitAnswerService implements SubmitAnswerUseCase {
+
+    private static final String GUESSED_REASON = "GUESSED";
 
     private final GameSessionRepository gameSessionRepository;
     private final DomainEventPublisher domainEventPublisher;
@@ -55,6 +58,14 @@ public class SubmitAnswerService implements SubmitAnswerUseCase {
                     evaluation.roundId().value(),
                     playerId.value(),
                     evaluation.score(),
+                    answeredAt
+            ));
+            domainEventPublisher.publishRoundFinished(new RoundFinishedEvent(
+                    roomCode.value(),
+                    evaluation.roundId().value(),
+                    RoundStatus.FINISHED.name(),
+                    GUESSED_REASON,
+                    answeredAt,
                     answeredAt
             ));
         }

@@ -1,6 +1,8 @@
 package edu.eci.uniplay.game.infrastructure.web.error;
 
 import edu.eci.uniplay.game.domain.model.RoundAlreadyActiveException;
+import edu.eci.uniplay.game.domain.model.RoundExpiredException;
+import edu.eci.uniplay.game.domain.model.RoundNotExpiredException;
 import edu.eci.uniplay.game.domain.model.RoundNotActiveException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -28,7 +30,12 @@ public class GlobalExceptionHandler {
         return problemDetail;
     }
 
-    @ExceptionHandler({RoundAlreadyActiveException.class, RoundNotActiveException.class})
+    @ExceptionHandler({
+            RoundAlreadyActiveException.class,
+            RoundExpiredException.class,
+            RoundNotActiveException.class,
+            RoundNotExpiredException.class
+    })
     ProblemDetail handleRoundConflict(RuntimeException exception) {
         ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, exception.getMessage());
         problemDetail.setTitle("Round conflict");

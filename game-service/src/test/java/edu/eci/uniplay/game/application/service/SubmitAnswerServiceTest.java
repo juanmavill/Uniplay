@@ -10,6 +10,7 @@ import java.util.UUID;
 
 import edu.eci.uniplay.game.application.dto.SubmitAnswerCommand;
 import edu.eci.uniplay.game.application.dto.SubmitAnswerResult;
+import edu.eci.uniplay.game.application.event.RoundFinishedEvent;
 import edu.eci.uniplay.game.application.event.RoundGuessedEvent;
 import edu.eci.uniplay.game.application.event.RoundStartedEvent;
 import edu.eci.uniplay.game.application.port.out.DomainEventPublisher;
@@ -53,6 +54,11 @@ class SubmitAnswerServiceTest {
             assertThat(event.score()).isEqualTo(100);
             assertThat(event.occurredAt()).isEqualTo(ANSWERED_AT);
         });
+        assertThat(eventPublisher.roundFinishedEvents).singleElement().satisfies(event -> {
+            assertThat(event.reason()).isEqualTo("GUESSED");
+            assertThat(event.status()).isEqualTo("FINISHED");
+            assertThat(event.finishedAt()).isEqualTo(ANSWERED_AT);
+        });
     }
 
     @Test
@@ -73,6 +79,7 @@ class SubmitAnswerServiceTest {
         assertThat(result.roundStatus()).isEqualTo("ACTIVE");
         assertThat(repository.saveCount).isZero();
         assertThat(eventPublisher.roundGuessedEvents).isEmpty();
+        assertThat(eventPublisher.roundFinishedEvents).isEmpty();
     }
 
     private static GameSession activeSession() {
@@ -109,6 +116,7 @@ class SubmitAnswerServiceTest {
     private static final class RecordingEventPublisher implements DomainEventPublisher {
 
         private final List<RoundGuessedEvent> roundGuessedEvents = new ArrayList<>();
+        private final List<RoundFinishedEvent> roundFinishedEvents = new ArrayList<>();
 
         @Override
         public void publishRoundStarted(RoundStartedEvent event) {
@@ -117,6 +125,11 @@ class SubmitAnswerServiceTest {
         @Override
         public void publishRoundGuessed(RoundGuessedEvent event) {
             roundGuessedEvents.add(event);
+        }
+
+        @Override
+        public void publishRoundFinished(RoundFinishedEvent event) {
+            roundFinishedEvents.add(event);
         }
     }
 }

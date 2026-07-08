@@ -65,4 +65,15 @@ public record Round(
 
         return new Round(id, secretWord, RoundStatus.FINISHED, startedAt, endsAt, playerId, finishedAt);
     }
+
+    public Round expire(Instant expiredAt) {
+        if (!isActive()) {
+            throw new RoundNotActiveException("round " + id.value() + " is not active");
+        }
+        if (!isExpiredAt(expiredAt)) {
+            throw new RoundNotExpiredException("round " + id.value() + " has not expired yet");
+        }
+
+        return new Round(id, secretWord, RoundStatus.EXPIRED, startedAt, endsAt, null, expiredAt);
+    }
 }

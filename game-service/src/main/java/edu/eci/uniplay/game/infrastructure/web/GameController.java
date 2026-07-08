@@ -1,16 +1,21 @@
 package edu.eci.uniplay.game.infrastructure.web;
 
 import java.net.URI;
+import java.util.UUID;
 
+import edu.eci.uniplay.game.application.dto.ExpireRoundCommand;
+import edu.eci.uniplay.game.application.dto.ExpireRoundResult;
 import edu.eci.uniplay.game.application.dto.GameStateResult;
 import edu.eci.uniplay.game.application.dto.StartRoundCommand;
 import edu.eci.uniplay.game.application.dto.StartRoundResult;
 import edu.eci.uniplay.game.application.dto.SubmitAnswerCommand;
 import edu.eci.uniplay.game.application.dto.SubmitAnswerResult;
+import edu.eci.uniplay.game.application.port.in.ExpireRoundUseCase;
 import edu.eci.uniplay.game.application.port.in.GetGameStateUseCase;
 import edu.eci.uniplay.game.application.port.in.StartRoundUseCase;
 import edu.eci.uniplay.game.application.port.in.SubmitAnswerUseCase;
 import edu.eci.uniplay.game.infrastructure.web.dto.GameStateResponse;
+import edu.eci.uniplay.game.infrastructure.web.dto.ExpireRoundResponse;
 import edu.eci.uniplay.game.infrastructure.web.dto.StartRoundResponse;
 import edu.eci.uniplay.game.infrastructure.web.dto.SubmitAnswerRequest;
 import edu.eci.uniplay.game.infrastructure.web.dto.SubmitAnswerResponse;
@@ -30,15 +35,18 @@ public class GameController {
     private final StartRoundUseCase startRoundUseCase;
     private final SubmitAnswerUseCase submitAnswerUseCase;
     private final GetGameStateUseCase getGameStateUseCase;
+    private final ExpireRoundUseCase expireRoundUseCase;
 
     public GameController(
             StartRoundUseCase startRoundUseCase,
             SubmitAnswerUseCase submitAnswerUseCase,
-            GetGameStateUseCase getGameStateUseCase
+            GetGameStateUseCase getGameStateUseCase,
+            ExpireRoundUseCase expireRoundUseCase
     ) {
         this.startRoundUseCase = startRoundUseCase;
         this.submitAnswerUseCase = submitAnswerUseCase;
         this.getGameStateUseCase = getGameStateUseCase;
+        this.expireRoundUseCase = expireRoundUseCase;
     }
 
     @PostMapping("/rounds")
@@ -60,6 +68,12 @@ public class GameController {
                 request.answer()
         ));
         return SubmitAnswerResponse.from(result);
+    }
+
+    @PostMapping("/rounds/{roundId}/timeout")
+    ExpireRoundResponse expireRound(@PathVariable String roomCode, @PathVariable UUID roundId) {
+        ExpireRoundResult result = expireRoundUseCase.expireRound(new ExpireRoundCommand(roomCode, roundId));
+        return ExpireRoundResponse.from(result);
     }
 
     @GetMapping
