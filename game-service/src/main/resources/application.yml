@@ -22,4 +22,5 @@ management:
 uniplay:
   game:
     points-per-correct-answer: ${GAME_POINTS_PER_CORRECT_ANSWER:100}
+    round-duration: ${GAME_ROUND_DURATION:PT1M}
     session-ttl: ${GAME_SESSION_TTL:PT2H}

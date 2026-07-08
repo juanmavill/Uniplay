@@ -30,12 +30,14 @@ class RedisDomainEventPublisherTest {
                 "ABC123",
                 UUID.fromString("11111111-1111-1111-1111-111111111111"),
                 "Campus",
+                Instant.parse("2026-07-07T12:00:00Z"),
+                Instant.parse("2026-07-07T12:01:00Z"),
                 Instant.parse("2026-07-07T12:00:00Z")
         ));
 
         verify(redisTemplate).convertAndSend(
                 eq(RedisDomainEventPublisher.ROUND_STARTED_CHANNEL),
-                contains("\"roomCode\":\"ABC123\"")
+                contains("\"endsAt\":\"2026-07-07T12:01:00Z\"")
         );
     }
 

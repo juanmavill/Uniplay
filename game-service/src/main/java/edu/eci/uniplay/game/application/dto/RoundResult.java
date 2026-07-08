@@ -9,6 +9,7 @@ public record RoundResult(
         String word,
         UUID guessedBy,
         Instant startedAt,
+        Instant endsAt,
         Instant finishedAt
 ) {
 }

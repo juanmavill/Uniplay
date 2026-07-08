@@ -59,7 +59,8 @@ class GameControllerTest {
                 ROUND_ID,
                 "Campus",
                 "ACTIVE",
-                NOW
+                NOW,
+                NOW.plusSeconds(60)
         ));
 
         mockMvc.perform(post("/games/abc123/rounds"))
@@ -67,7 +68,8 @@ class GameControllerTest {
                 .andExpect(header().string("Location", "/games/ABC123"))
                 .andExpect(jsonPath("$.roomCode").value("ABC123"))
                 .andExpect(jsonPath("$.word").value("Campus"))
-                .andExpect(jsonPath("$.status").value("ACTIVE"));
+                .andExpect(jsonPath("$.status").value("ACTIVE"))
+                .andExpect(jsonPath("$.endsAt").value("2026-07-07T12:01:00Z"));
 
         ArgumentCaptor<StartRoundCommand> captor = ArgumentCaptor.forClass(StartRoundCommand.class);
         verify(startRoundUseCase).startRound(captor.capture());
@@ -109,13 +111,14 @@ class GameControllerTest {
     void returnsGameState() throws Exception {
         when(getGameStateUseCase.getState("ABC123")).thenReturn(new GameStateResult(
                 "ABC123",
-                new RoundResult(ROUND_ID, "ACTIVE", "Campus", null, NOW, null),
+                new RoundResult(ROUND_ID, "ACTIVE", "Campus", null, NOW, NOW.plusSeconds(60), null),
                 List.of(new ScoreResult(PLAYER_ID, 100))
         ));
 
         mockMvc.perform(get("/games/ABC123"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.round.word").value("Campus"))
+                .andExpect(jsonPath("$.round.endsAt").value("2026-07-07T12:01:00Z"))
                 .andExpect(jsonPath("$.scores[0].playerId").value(PLAYER_ID.toString()))
                 .andExpect(jsonPath("$.scores[0].score").value(100));
     }

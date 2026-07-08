@@ -15,26 +15,28 @@ class GameSessionTest {
     private static final PlayerId PLAYER_ID = new PlayerId(UUID.fromString("22222222-2222-2222-2222-222222222222"));
     private static final Instant STARTED_AT = Instant.parse("2026-07-07T12:00:00Z");
     private static final Instant ANSWERED_AT = Instant.parse("2026-07-07T12:00:05Z");
+    private static final Instant ENDS_AT = Instant.parse("2026-07-07T12:01:00Z");
 
     @Test
     void startsRoundWhenNoRoundIsActive() {
         GameSession session = GameSession.newFor(ROOM_CODE);
 
-        GameSession updatedSession = session.startRound(ROUND_ID, new SecretWord("Biblioteca"), STARTED_AT);
+        GameSession updatedSession = session.startRound(ROUND_ID, new SecretWord("Biblioteca"), STARTED_AT, ENDS_AT);
 
         assertThat(updatedSession.round()).get().satisfies(round -> {
             assertThat(round.id()).isEqualTo(ROUND_ID);
             assertThat(round.status()).isEqualTo(RoundStatus.ACTIVE);
             assertThat(round.startedAt()).isEqualTo(STARTED_AT);
+            assertThat(round.endsAt()).isEqualTo(ENDS_AT);
         });
     }
 
     @Test
     void rejectsNewRoundWhenAnotherRoundIsActive() {
         GameSession session = GameSession.newFor(ROOM_CODE)
-                .startRound(ROUND_ID, new SecretWord("Biblioteca"), STARTED_AT);
+                .startRound(ROUND_ID, new SecretWord("Biblioteca"), STARTED_AT, ENDS_AT);
 
-        assertThatThrownBy(() -> session.startRound(new RoundId(UUID.randomUUID()), new SecretWord("Campus"), STARTED_AT))
+        assertThatThrownBy(() -> session.startRound(new RoundId(UUID.randomUUID()), new SecretWord("Campus"), STARTED_AT, ENDS_AT))
                 .isInstanceOf(RoundAlreadyActiveException.class)
                 .hasMessageContaining("already has an active round");
     }
@@ -42,7 +44,7 @@ class GameSessionTest {
     @Test
     void correctAnswerAddsScoreAndFinishesRound() {
         GameSession session = GameSession.newFor(ROOM_CODE)
-                .startRound(ROUND_ID, new SecretWord("Biblioteca"), STARTED_AT);
+                .startRound(ROUND_ID, new SecretWord("Biblioteca"), STARTED_AT, ENDS_AT);
 
         AnswerEvaluation evaluation = session.submitAnswer(PLAYER_ID, " biblioteca ", 100, ANSWERED_AT);
 
@@ -58,7 +60,7 @@ class GameSessionTest {
     @Test
     void wrongAnswerKeepsCurrentScoreAndRoundActive() {
         GameSession session = GameSession.newFor(ROOM_CODE)
-                .startRound(ROUND_ID, new SecretWord("Biblioteca"), STARTED_AT);
+                .startRound(ROUND_ID, new SecretWord("Biblioteca"), STARTED_AT, ENDS_AT);
 
         AnswerEvaluation evaluation = session.submitAnswer(PLAYER_ID, "cafeteria", 100, ANSWERED_AT);
 
@@ -75,5 +77,15 @@ class GameSessionTest {
         assertThatThrownBy(() -> session.submitAnswer(PLAYER_ID, "biblioteca", 100, ANSWERED_AT))
                 .isInstanceOf(RoundNotActiveException.class)
                 .hasMessageContaining("does not have an active round");
+    }
+
+    @Test
+    void rejectsCorrectAnswerWhenRoundAlreadyExpired() {
+        GameSession session = GameSession.newFor(ROOM_CODE)
+                .startRound(ROUND_ID, new SecretWord("Biblioteca"), STARTED_AT, ENDS_AT);
+
+        assertThatThrownBy(() -> session.submitAnswer(PLAYER_ID, "biblioteca", 100, ENDS_AT))
+                .isInstanceOf(RoundExpiredException.class)
+                .hasMessageContaining("expired at");
     }
 }

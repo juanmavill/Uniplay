@@ -11,6 +11,7 @@ public record RoundResponse(
         String word,
         UUID guessedBy,
         Instant startedAt,
+        Instant endsAt,
         Instant finishedAt
 ) {
 
@@ -21,6 +22,7 @@ public record RoundResponse(
                 result.word(),
                 result.guessedBy(),
                 result.startedAt(),
+                result.endsAt(),
                 result.finishedAt()
         );
     }

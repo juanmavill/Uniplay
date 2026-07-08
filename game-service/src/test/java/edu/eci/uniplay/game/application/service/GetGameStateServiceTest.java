@@ -38,7 +38,8 @@ class GetGameStateServiceTest {
                 Round.start(
                         new RoundId(UUID.fromString("11111111-1111-1111-1111-111111111111")),
                         new SecretWord("Campus"),
-                        Instant.parse("2026-07-07T12:00:00Z")
+                        Instant.parse("2026-07-07T12:00:00Z"),
+                        Instant.parse("2026-07-07T12:01:00Z")
                 ),
                 Map.of(playerId, 100)
         );
@@ -47,6 +48,7 @@ class GetGameStateServiceTest {
         GameStateResult result = service.getState("ABC123");
 
         assertThat(result.round().word()).isEqualTo("Campus");
+        assertThat(result.round().endsAt()).isEqualTo(Instant.parse("2026-07-07T12:01:00Z"));
         assertThat(result.scores()).singleElement().satisfies(score -> {
             assertThat(score.playerId()).isEqualTo(playerId.value());
             assertThat(score.score()).isEqualTo(100);

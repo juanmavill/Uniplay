@@ -25,12 +25,12 @@ public final class GameSession {
         return new GameSession(roomCode, round, scores);
     }
 
-    public GameSession startRound(RoundId roundId, SecretWord secretWord, Instant startedAt) {
+    public GameSession startRound(RoundId roundId, SecretWord secretWord, Instant startedAt, Instant endsAt) {
         if (round != null && round.isActive()) {
             throw new RoundAlreadyActiveException("room " + roomCode.value() + " already has an active round");
         }
 
-        return new GameSession(roomCode, Round.start(roundId, secretWord, startedAt), scores);
+        return new GameSession(roomCode, Round.start(roundId, secretWord, startedAt, endsAt), scores);
     }
 
     public AnswerEvaluation submitAnswer(PlayerId playerId, String answer, int points, Instant answeredAt) {

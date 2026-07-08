@@ -11,6 +11,7 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "uniplay.game")
 public record GameProperties(
         @Min(1) int pointsPerCorrectAnswer,
+        @NotNull Duration roundDuration,
         @NotNull Duration sessionTtl
 ) {
 }

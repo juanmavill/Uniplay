@@ -7,6 +7,7 @@ public record Round(
         SecretWord secretWord,
         RoundStatus status,
         Instant startedAt,
+        Instant endsAt,
         PlayerId guessedBy,
         Instant finishedAt
 ) {
@@ -24,17 +25,30 @@ public record Round(
         if (startedAt == null) {
             throw new IllegalArgumentException("round start time is required");
         }
+        if (endsAt == null) {
+            throw new IllegalArgumentException("round end time is required");
+        }
+        if (!endsAt.isAfter(startedAt)) {
+            throw new IllegalArgumentException("round end time must be after start time");
+        }
         if (status == RoundStatus.FINISHED && (guessedBy == null || finishedAt == null)) {
             throw new IllegalArgumentException("finished round requires winner and finish time");
         }
+        if (status == RoundStatus.EXPIRED && finishedAt == null) {
+            throw new IllegalArgumentException("expired round requires finish time");
+        }
     }
 
-    public static Round start(RoundId id, SecretWord secretWord, Instant startedAt) {
-        return new Round(id, secretWord, RoundStatus.ACTIVE, startedAt, null, null);
+    public static Round start(RoundId id, SecretWord secretWord, Instant startedAt, Instant endsAt) {
+        return new Round(id, secretWord, RoundStatus.ACTIVE, startedAt, endsAt, null, null);
     }
 
     public boolean isActive() {
         return status == RoundStatus.ACTIVE;
+    }
+
+    public boolean isExpiredAt(Instant instant) {
+        return isActive() && !instant.isBefore(endsAt);
     }
 
     public boolean matches(String answer) {
@@ -45,7 +59,10 @@ public record Round(
         if (!isActive()) {
             throw new RoundNotActiveException("round " + id.value() + " is not active");
         }
+        if (isExpiredAt(finishedAt)) {
+            throw new RoundExpiredException("round " + id.value() + " expired at " + endsAt);
+        }
 
-        return new Round(id, secretWord, RoundStatus.FINISHED, startedAt, playerId, finishedAt);
+        return new Round(id, secretWord, RoundStatus.FINISHED, startedAt, endsAt, playerId, finishedAt);
     }
 }

@@ -99,6 +99,7 @@ public class RedisGameSessionRepository implements GameSessionRepository {
             String word,
             String status,
             String startedAt,
+            String endsAt,
             String guessedBy,
             String finishedAt
     ) {
@@ -109,6 +110,7 @@ public class RedisGameSessionRepository implements GameSessionRepository {
                     round.secretWord().value(),
                     round.status().name(),
                     round.startedAt().toString(),
+                    round.endsAt().toString(),
                     round.guessedBy() == null ? null : round.guessedBy().value().toString(),
                     round.finishedAt() == null ? null : round.finishedAt().toString()
             );
@@ -120,6 +122,7 @@ public class RedisGameSessionRepository implements GameSessionRepository {
                     new SecretWord(word),
                     RoundStatus.valueOf(status),
                     Instant.parse(startedAt),
+                    Instant.parse(endsAt),
                     guessedBy == null ? null : new PlayerId(UUID.fromString(guessedBy)),
                     finishedAt == null ? null : Instant.parse(finishedAt)
             );

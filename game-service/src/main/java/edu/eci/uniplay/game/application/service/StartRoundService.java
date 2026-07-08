@@ -1,6 +1,7 @@
 package edu.eci.uniplay.game.application.service;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -22,17 +23,20 @@ public class StartRoundService implements StartRoundUseCase {
     private final GameSessionRepository gameSessionRepository;
     private final WordDeckProvider wordDeckProvider;
     private final DomainEventPublisher domainEventPublisher;
+    private final Duration roundDuration;
     private final Clock clock;
 
     public StartRoundService(
             GameSessionRepository gameSessionRepository,
             WordDeckProvider wordDeckProvider,
             DomainEventPublisher domainEventPublisher,
+            Duration roundDuration,
             Clock clock
     ) {
         this.gameSessionRepository = gameSessionRepository;
         this.wordDeckProvider = wordDeckProvider;
         this.domainEventPublisher = domainEventPublisher;
+        this.roundDuration = roundDuration;
         this.clock = clock;
     }
 
@@ -40,17 +44,20 @@ public class StartRoundService implements StartRoundUseCase {
     public StartRoundResult startRound(StartRoundCommand command) {
         RoomCode roomCode = new RoomCode(command.roomCode());
         Instant startedAt = Instant.now(clock);
+        Instant endsAt = startedAt.plus(roundDuration);
         GameSession session = gameSessionRepository.findByRoomCode(roomCode)
                 .orElseGet(() -> GameSession.newFor(roomCode));
         SecretWord secretWord = wordDeckProvider.nextWord(roomCode);
         RoundId roundId = new RoundId(UUID.randomUUID());
 
-        GameSession updatedSession = session.startRound(roundId, secretWord, startedAt);
+        GameSession updatedSession = session.startRound(roundId, secretWord, startedAt, endsAt);
         gameSessionRepository.save(updatedSession);
         domainEventPublisher.publishRoundStarted(new RoundStartedEvent(
                 roomCode.value(),
                 roundId.value(),
                 secretWord.value(),
+                startedAt,
+                endsAt,
                 startedAt
         ));
 
@@ -60,7 +67,8 @@ public class StartRoundService implements StartRoundUseCase {
                 round.id().value(),
                 round.secretWord().value(),
                 round.status().name(),
-                round.startedAt()
+                round.startedAt(),
+                round.endsAt()
         );
     }
 }

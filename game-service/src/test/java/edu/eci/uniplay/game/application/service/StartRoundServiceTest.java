@@ -1,6 +1,7 @@
 package edu.eci.uniplay.game.application.service;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -32,6 +33,7 @@ class StartRoundServiceTest {
                 repository,
                 roomCode -> new SecretWord("Campus"),
                 eventPublisher,
+                Duration.ofSeconds(45),
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
 
@@ -41,11 +43,14 @@ class StartRoundServiceTest {
         assertThat(result.word()).isEqualTo("Campus");
         assertThat(result.status()).isEqualTo("ACTIVE");
         assertThat(result.startedAt()).isEqualTo(NOW);
+        assertThat(result.endsAt()).isEqualTo(NOW.plusSeconds(45));
         assertThat(repository.savedSession).isNotNull();
         assertThat(eventPublisher.roundStartedEvents).singleElement().satisfies(event -> {
             assertThat(event.roomCode()).isEqualTo("ABC123");
             assertThat(event.roundId()).isEqualTo(result.roundId());
             assertThat(event.word()).isEqualTo("Campus");
+            assertThat(event.startedAt()).isEqualTo(NOW);
+            assertThat(event.endsAt()).isEqualTo(NOW.plusSeconds(45));
             assertThat(event.occurredAt()).isEqualTo(NOW);
         });
     }

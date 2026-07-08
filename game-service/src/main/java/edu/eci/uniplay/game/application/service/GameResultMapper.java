@@ -35,6 +35,7 @@ final class GameResultMapper {
                 round.secretWord().value(),
                 round.guessedBy() == null ? null : round.guessedBy().value(),
                 round.startedAt(),
+                round.endsAt(),
                 round.finishedAt()
         );
     }

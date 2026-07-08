@@ -10,7 +10,8 @@ public record StartRoundResponse(
         UUID roundId,
         String word,
         String status,
-        Instant startedAt
+        Instant startedAt,
+        Instant endsAt
 ) {
 
     public static StartRoundResponse from(StartRoundResult result) {
@@ -19,7 +20,8 @@ public record StartRoundResponse(
                 result.roundId(),
                 result.word(),
                 result.status(),
-                result.startedAt()
+                result.startedAt(),
+                result.endsAt()
         );
     }
 }

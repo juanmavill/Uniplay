@@ -38,13 +38,22 @@ public class RedisDomainEventPublisher implements DomainEventPublisher {
         }
     }
 
-    private record RoundStartedPayload(String roomCode, String roundId, String word, String occurredAt) {
+    private record RoundStartedPayload(
+            String roomCode,
+            String roundId,
+            String word,
+            String startedAt,
+            String endsAt,
+            String occurredAt
+    ) {
 
         static RoundStartedPayload from(RoundStartedEvent event) {
             return new RoundStartedPayload(
                     event.roomCode(),
                     event.roundId().toString(),
                     event.word(),
+                    event.startedAt().toString(),
+                    event.endsAt().toString(),
                     event.occurredAt().toString()
             );
         }

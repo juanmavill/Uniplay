@@ -8,6 +8,7 @@ public record StartRoundResult(
         UUID roundId,
         String word,
         String status,
-        Instant startedAt
+        Instant startedAt,
+        Instant endsAt
 ) {
 }

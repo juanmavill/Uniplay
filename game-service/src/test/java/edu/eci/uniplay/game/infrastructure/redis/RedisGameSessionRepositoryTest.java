@@ -52,7 +52,8 @@ class RedisGameSessionRepositoryTest {
                 .startRound(
                         new RoundId(UUID.fromString("11111111-1111-1111-1111-111111111111")),
                         new SecretWord("Campus"),
-                        Instant.parse("2026-07-07T12:00:00Z")
+                        Instant.parse("2026-07-07T12:00:00Z"),
+                        Instant.parse("2026-07-07T12:01:00Z")
                 );
 
         repository.save(session);
@@ -110,6 +111,7 @@ class RedisGameSessionRepositoryTest {
                     "word": "Campus",
                     "status": "FINISHED",
                     "startedAt": "2026-07-07T12:00:00Z",
+                    "endsAt": "2026-07-07T12:01:00Z",
                     "guessedBy": "22222222-2222-2222-2222-222222222222",
                     "finishedAt": "2026-07-07T12:00:10Z"
                   },
