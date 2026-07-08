@@ -44,6 +44,7 @@ public class RealtimeServiceConfiguration {
         container.addMessageListener(redisRoundEventSubscriber, new ChannelTopic(RedisRoundEventSubscriber.ROUND_STARTED_CHANNEL));
         container.addMessageListener(redisRoundEventSubscriber, new ChannelTopic(RedisRoundEventSubscriber.ROUND_FINISHED_CHANNEL));
         container.addMessageListener(redisRoundEventSubscriber, new ChannelTopic(RedisRoundEventSubscriber.ROUND_GUESSED_CHANNEL));
+        container.addMessageListener(redisRoundEventSubscriber, new ChannelTopic(RedisRoundEventSubscriber.VOTE_CAST_CHANNEL));
         return container;
     }
 }

@@ -2,6 +2,7 @@ package edu.eci.uniplay.realtime.infrastructure.redis;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import edu.eci.uniplay.realtime.application.dto.RoundEventMessage;
@@ -83,6 +84,35 @@ class RedisRoundEventSubscriberTest {
         verify(roundEventBroker).sendRoundEvent(captor.capture());
         assertThat(captor.getValue().type()).isEqualTo("WORD_GUESSED");
         assertThat(captor.getValue().score()).isEqualTo(100);
+    }
+
+    @Test
+    void forwardsVoteCastEvent() {
+        RedisRoundEventSubscriber subscriber = new RedisRoundEventSubscriber(new ObjectMapper(), roundEventBroker);
+
+        subscriber.onMessage(message(RedisRoundEventSubscriber.VOTE_CAST_CHANNEL, """
+                {
+                  "roomCode": "ABC123",
+                  "roundId": "11111111-1111-1111-1111-111111111111",
+                  "voterId": "22222222-2222-2222-2222-222222222222",
+                  "candidateId": "33333333-3333-3333-3333-333333333333",
+                  "tallies": [
+                    {
+                      "candidateId": "33333333-3333-3333-3333-333333333333",
+                      "votes": 1
+                    }
+                  ],
+                  "occurredAt": "2026-07-07T12:00:05Z"
+                }
+                """), null);
+
+        ArgumentCaptor<RoundEventMessage> captor = ArgumentCaptor.forClass(RoundEventMessage.class);
+        verify(roundEventBroker).sendRoundEvent(captor.capture());
+        assertThat(captor.getValue().type()).isEqualTo("VOTE_CAST");
+        assertThat(captor.getValue().voterId()).isEqualTo(UUID.fromString("22222222-2222-2222-2222-222222222222"));
+        assertThat(captor.getValue().candidateId()).isEqualTo(UUID.fromString("33333333-3333-3333-3333-333333333333"));
+        assertThat(captor.getValue().tallies()).singleElement()
+                .satisfies(tally -> assertThat(tally.votes()).isEqualTo(1));
     }
 
     private DefaultMessage message(String channel, String body) {

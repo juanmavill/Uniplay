@@ -3,6 +3,7 @@ package edu.eci.uniplay.realtime.infrastructure.redis;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -16,6 +17,7 @@ public class RedisRoundEventSubscriber implements MessageListener {
     public static final String ROUND_STARTED_CHANNEL = "ronda.iniciada";
     public static final String ROUND_FINISHED_CHANNEL = "ronda.terminada";
     public static final String ROUND_GUESSED_CHANNEL = "palabra.adivinada";
+    public static final String VOTE_CAST_CHANNEL = "voto.emitido";
 
     private final ObjectMapper objectMapper;
     private final RoundEventBroker roundEventBroker;
@@ -42,6 +44,7 @@ public class RedisRoundEventSubscriber implements MessageListener {
             case ROUND_STARTED_CHANNEL -> toRoundStartedMessage(payload);
             case ROUND_FINISHED_CHANNEL -> toRoundFinishedMessage(payload);
             case ROUND_GUESSED_CHANNEL -> toRoundGuessedMessage(payload);
+            case VOTE_CAST_CHANNEL -> toVoteCastMessage(payload);
             default -> throw new IllegalArgumentException("unsupported round event channel " + channel);
         };
     }
@@ -54,6 +57,9 @@ public class RedisRoundEventSubscriber implements MessageListener {
                 UUID.fromString(event.roundId()),
                 event.word(),
                 "ACTIVE",
+                null,
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -77,6 +83,9 @@ public class RedisRoundEventSubscriber implements MessageListener {
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
                 Instant.parse(event.finishedAt()),
                 Instant.parse(event.occurredAt())
         );
@@ -92,7 +101,36 @@ public class RedisRoundEventSubscriber implements MessageListener {
                 null,
                 null,
                 UUID.fromString(event.playerId()),
+                null,
+                null,
                 event.score(),
+                null,
+                null,
+                null,
+                null,
+                Instant.parse(event.occurredAt())
+        );
+    }
+
+    private RoundEventMessage toVoteCastMessage(String payload) throws IOException {
+        VoteCastPayload event = objectMapper.readValue(payload, VoteCastPayload.class);
+        return new RoundEventMessage(
+                "VOTE_CAST",
+                event.roomCode(),
+                UUID.fromString(event.roundId()),
+                null,
+                null,
+                null,
+                null,
+                UUID.fromString(event.voterId()),
+                UUID.fromString(event.candidateId()),
+                null,
+                event.tallies().stream()
+                        .map(tally -> new RoundEventMessage.VoteTallyMessage(
+                                UUID.fromString(tally.candidateId()),
+                                tally.votes()
+                        ))
+                        .toList(),
                 null,
                 null,
                 null,
@@ -127,5 +165,18 @@ public class RedisRoundEventSubscriber implements MessageListener {
             int score,
             String occurredAt
     ) {
+    }
+
+    private record VoteCastPayload(
+            String roomCode,
+            String roundId,
+            String voterId,
+            String candidateId,
+            List<VoteTallyPayload> tallies,
+            String occurredAt
+    ) {
+    }
+
+    private record VoteTallyPayload(String candidateId, int votes) {
     }
 }
