@@ -40,6 +40,37 @@ Respuesta exitosa:
 El canal de voz se crea on-demand cuando el primer cliente usa el token para
 conectarse a LiveKit.
 
+### Cambiar estado de microfono
+
+```http
+POST /voice/mute
+Content-Type: application/json
+
+{
+  "roomCode": "ABC123",
+  "playerId": "22222222-2222-2222-2222-222222222222",
+  "muted": true
+}
+```
+
+Respuesta exitosa:
+
+```json
+{
+  "roomCode": "ABC123",
+  "voiceRoomName": "uniplay-ABC123",
+  "participantIdentity": "22222222-2222-2222-2222-222222222222",
+  "muted": true,
+  "changedAt": "2026-07-07T12:00:00Z"
+}
+```
+
+## Eventos publicados
+
+| Canal Redis | Momento |
+|---|---|
+| `voz.microfono_actualizado` | Despues de cambiar el estado de mute de un participante |
+
 ## LiveKit local
 
 El `docker-compose.yml` levanta `livekit/livekit-server` en modo desarrollo:
@@ -62,6 +93,8 @@ con variables de entorno y secretos del entorno de despliegue.
 | `LIVEKIT_API_KEY` | `devkey` |
 | `LIVEKIT_API_SECRET` | `secret` |
 | `VOICE_TOKEN_TTL` | `PT30M` |
+| `REDIS_HOST` | `localhost` |
+| `REDIS_PORT` | `6379` |
 
 ## Verificacion
 

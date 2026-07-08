@@ -1,7 +1,11 @@
 package edu.eci.uniplay.voice.infrastructure.web;
 
 import edu.eci.uniplay.voice.application.dto.GenerateVoiceTokenCommand;
+import edu.eci.uniplay.voice.application.dto.ChangeMuteStateCommand;
+import edu.eci.uniplay.voice.application.port.in.ChangeMuteStateUseCase;
 import edu.eci.uniplay.voice.application.port.in.GenerateVoiceTokenUseCase;
+import edu.eci.uniplay.voice.infrastructure.web.dto.MuteStateRequest;
+import edu.eci.uniplay.voice.infrastructure.web.dto.MuteStateResponse;
 import edu.eci.uniplay.voice.infrastructure.web.dto.VoiceTokenRequest;
 import edu.eci.uniplay.voice.infrastructure.web.dto.VoiceTokenResponse;
 import jakarta.validation.Valid;
@@ -17,9 +21,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class VoiceController {
 
     private final GenerateVoiceTokenUseCase generateVoiceTokenUseCase;
+    private final ChangeMuteStateUseCase changeMuteStateUseCase;
 
-    public VoiceController(GenerateVoiceTokenUseCase generateVoiceTokenUseCase) {
+    public VoiceController(
+            GenerateVoiceTokenUseCase generateVoiceTokenUseCase,
+            ChangeMuteStateUseCase changeMuteStateUseCase
+    ) {
         this.generateVoiceTokenUseCase = generateVoiceTokenUseCase;
+        this.changeMuteStateUseCase = changeMuteStateUseCase;
     }
 
     @PostMapping("/token")
@@ -29,6 +38,15 @@ public class VoiceController {
                 request.roomCode(),
                 request.playerId(),
                 request.playerName()
+        )));
+    }
+
+    @PostMapping("/mute")
+    MuteStateResponse changeMuteState(@Valid @RequestBody MuteStateRequest request) {
+        return MuteStateResponse.from(changeMuteStateUseCase.changeMuteState(new ChangeMuteStateCommand(
+                request.roomCode(),
+                request.playerId(),
+                request.muted()
         )));
     }
 }

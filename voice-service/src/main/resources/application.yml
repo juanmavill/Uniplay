@@ -1,6 +1,10 @@
 spring:
   application:
     name: voice-service
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 server:
   port: ${VOICE_SERVICE_PORT:8085}
