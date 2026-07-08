@@ -2,7 +2,7 @@
 
 Gestiona la creacion de salas y la reserva de codigos de ingreso de UniPlay.
 
-## Endpoint HU-01
+## Endpoints
 
 ### Crear sala
 
@@ -12,6 +12,39 @@ Content-Type: application/json
 
 {
   "maxPlayers": 21
+}
+```
+
+### Unirse a sala
+
+```http
+POST /salas/{codigo}/jugadores
+Content-Type: application/json
+
+{
+  "playerName": "Ana"
+}
+```
+
+Respuesta exitosa:
+
+```http
+200 OK
+```
+
+```json
+{
+  "roomId": "11111111-1111-1111-1111-111111111111",
+  "code": "ABC123",
+  "playerId": "22222222-2222-2222-2222-222222222222",
+  "playerName": "Ana",
+  "players": [
+    {
+      "playerId": "22222222-2222-2222-2222-222222222222",
+      "playerName": "Ana"
+    }
+  ],
+  "joinedAt": "2026-07-07T12:30:00Z"
 }
 ```
 
@@ -39,12 +72,16 @@ Location: /salas/{codigo}
 | Canal Redis | Momento |
 |---|---|
 | `sala.creada` | Despues de reservar el codigo y persistir la sala |
+| `jugador.conectado` | Despues de agregar el jugador y persistir la sala |
 
 ## Persistencia
 
 La sala se guarda en Redis con TTL. El codigo se reserva usando una operacion
 atomica `setIfAbsent`, evitando carreras cuando dos solicitudes generan el
 mismo codigo.
+
+Los jugadores quedan dentro del documento de sala. La validacion de duplicados
+y cupo maximo vive en el dominio `Room`, no en el adaptador Redis.
 
 ## Configuracion
 
