@@ -6,7 +6,7 @@ import SockJS from "sockjs-client";
 import { Room, RoomEvent, Track } from "livekit-client";
 import "./styles.css";
 
-const DECKS = ["GENERAL", "MATEMATICAS", "SISTEMAS", "FISICA"];
+const DECKS = ["GENERAL", "MATEMATICAS", "SISTEMAS", "FISICA", "CUSTOM"];
 const MODES = ["CLASSIC", "ALL_DRAW"];
 const DEFAULT_ROUND_LIMIT = 3;
 const INITIAL_PARAMS = new URLSearchParams(window.location.search);
@@ -45,6 +45,7 @@ function App() {
   const [answer, setAnswer] = React.useState("");
   const [chatMessages, setChatMessages] = React.useState([]);
   const [deck, setDeck] = React.useState("SISTEMAS");
+  const [customWordsText, setCustomWordsText] = React.useState(() => localStorage.getItem("uniplay.customWords") || "");
   const [mode, setMode] = React.useState("CLASSIC");
   const [roundLimit, setRoundLimit] = React.useState(() => clampRoundLimit(localStorage.getItem("uniplay.roundLimit") || DEFAULT_ROUND_LIMIT));
   const [roundsStarted, setRoundsStarted] = React.useState(0);
@@ -66,6 +67,9 @@ function App() {
   const roundIsActive = activeRound?.status === "ACTIVE";
   const timer = useRoundTimer(activeRound);
   const scores = React.useMemo(() => indexScores(gameState?.scores), [gameState]);
+  const customWords = React.useMemo(() => parseCustomWords(customWordsText), [customWordsText]);
+  const customDeckIsValid = deck !== "CUSTOM"
+    || (customWords.length >= 3 && customWords.length <= 100 && customWords.every((word) => word.length <= 40));
   const hostPlayer = players[0] || null;
   const isHost = Boolean(player?.playerId && hostPlayer?.playerId === player.playerId);
   const matchComplete = roundsStarted >= roundLimit && !roundIsActive;
@@ -91,6 +95,10 @@ function App() {
   React.useEffect(() => {
     localStorage.setItem("uniplay.roundLimit", String(roundLimit));
   }, [roundLimit]);
+
+  React.useEffect(() => {
+    localStorage.setItem("uniplay.customWords", customWordsText);
+  }, [customWordsText]);
 
   React.useEffect(() => {
     const handlePopState = () => setRoute(parsePlayerRoute(window.location.pathname));
@@ -335,13 +343,17 @@ function App() {
       if (matchComplete) {
         throw new Error("La partida ya alcanzo el numero de rondas configurado");
       }
+      if (!customDeckIsValid) {
+        throw new Error("El mazo personalizado requiere entre 3 y 100 palabras unicas de maximo 40 caracteres");
+      }
       const nextTurnNumber = activeRound && players.length > 0 ? (turnNumber + 1) % players.length : turnNumber;
       const nextDrawer = players.length > 0 ? players[nextTurnNumber] : null;
       const nextRound = await api.startRound(
         currentRoomCode,
         mode,
         deck,
-        mode === "ALL_DRAW" ? null : nextDrawer?.playerId
+        mode === "ALL_DRAW" ? null : nextDrawer?.playerId,
+        deck === "CUSTOM" ? customWords : null
       );
       const nextState = await api.getGameState(currentRoomCode, player?.playerId);
       const displayRound = Math.min(roundsStarted + 1, roundLimit);
@@ -603,6 +615,19 @@ function App() {
               <select value={deck} onChange={(event) => setDeck(event.target.value)} aria-label="Mazo" disabled={roundIsActive || roundsStarted > 0}>
                 {DECKS.map((item) => <option key={item} value={item}>{deckLabel(item)}</option>)}
               </select>
+              {deck === "CUSTOM" && (
+                <label className="custom-deck-control">
+                  Palabras personalizadas
+                  <textarea
+                    rows="3"
+                    value={customWordsText}
+                    onChange={(event) => setCustomWordsText(event.target.value)}
+                    disabled={roundIsActive || roundsStarted > 0}
+                    placeholder="cohete, castillo, dragon"
+                  />
+                  <small className={customDeckIsValid ? "good" : "invalid"}>{customWords.length}/100</small>
+                </label>
+              )}
               <label className="round-count-control">
                 Rondas
                 <input
@@ -614,7 +639,7 @@ function App() {
                   disabled={roundIsActive || roundsStarted > 0}
                 />
               </label>
-              <button className="primary" onClick={startRound} disabled={isBusy || !currentRoomCode || roundIsActive || players.length === 0 || matchComplete}>
+              <button className="primary" onClick={startRound} disabled={isBusy || !currentRoomCode || roundIsActive || players.length === 0 || matchComplete || !customDeckIsValid}>
                 <Play size={16} />
                 {matchComplete ? "Finalizada" : activeRound ? "Siguiente" : "Ronda"}
               </button>
@@ -891,7 +916,7 @@ function createApiClient(baseUrl) {
     createRoom: (maxPlayers) => request(normalizedBaseUrl, "/salas", { method: "POST", body: { maxPlayers } }),
     joinRoom: (code, playerName) => request(normalizedBaseUrl, `/salas/${code}/jugadores`, { method: "POST", body: { playerName } }),
     listPlayers: (code) => request(normalizedBaseUrl, `/salas/${code}/jugadores`),
-    startRound: (code, mode, deck, drawerId) => request(normalizedBaseUrl, `/games/${code}/rounds`, { method: "POST", body: { mode, deck, drawerId } }),
+    startRound: (code, mode, deck, drawerId, customWords) => request(normalizedBaseUrl, `/games/${code}/rounds`, { method: "POST", body: { mode, deck, drawerId, customWords } }),
     submitAnswer: (code, playerId, answer) => request(normalizedBaseUrl, `/games/${code}/answers`, { method: "POST", body: { playerId, answer } }),
     getGameState: (code, viewerPlayerId) => request(normalizedBaseUrl, `/games/${code}${viewerPlayerId ? `?viewerPlayerId=${encodeURIComponent(viewerPlayerId)}` : ""}`),
     expireRound: (code, roundId) => request(normalizedBaseUrl, `/games/${code}/rounds/${roundId}/timeout`, { method: "POST" }),
@@ -1007,8 +1032,17 @@ function deckLabel(value) {
     GENERAL: "General",
     MATEMATICAS: "Matematicas",
     SISTEMAS: "Sistemas",
-    FISICA: "Fisica"
+    FISICA: "Fisica",
+    CUSTOM: "Personalizado"
   }[value];
+}
+
+function parseCustomWords(value) {
+  const words = String(value)
+    .split(/[\n,;]+/)
+    .map((word) => word.trim())
+    .filter(Boolean);
+  return [...new Map(words.map((word) => [word.toLocaleLowerCase(), word])).values()];
 }
 
 createRoot(document.getElementById("root")).render(<App />);

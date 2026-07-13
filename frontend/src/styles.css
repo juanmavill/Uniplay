@@ -21,7 +21,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -55,7 +56,8 @@ button.primary {
 }
 
 input,
-select {
+select,
+textarea {
   width: 100%;
   min-height: 40px;
   border: 1px solid #b8c9ce;
@@ -65,8 +67,15 @@ select {
   background: #ffffff;
 }
 
+textarea {
+  resize: vertical;
+  min-height: 76px;
+  padding: 9px 11px;
+}
+
 input:focus,
 select:focus,
+textarea:focus,
 button:focus-visible {
   outline: 3px solid rgba(15, 139, 141, 0.22);
   outline-offset: 1px;
@@ -371,6 +380,35 @@ h1 {
 
 .round-count-control input {
   min-height: 40px;
+}
+
+.custom-deck-control {
+  display: grid;
+  flex: 1 1 280px;
+  gap: 4px;
+  min-width: min(280px, 100%);
+  color: #60727a;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.custom-deck-control textarea {
+  color: #172026;
+  font-weight: 500;
+  text-transform: none;
+}
+
+.custom-deck-control small {
+  justify-self: end;
+}
+
+.custom-deck-control small.good {
+  color: #16734a;
+}
+
+.custom-deck-control small.invalid {
+  color: #b12c2c;
 }
 
 .viewer-controls {
