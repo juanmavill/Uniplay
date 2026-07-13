@@ -56,7 +56,7 @@ public class StartRoundService implements StartRoundUseCase {
         GameSession session = gameSessionRepository.findByRoomCode(roomCode)
                 .orElseGet(() -> GameSession.newFor(roomCode));
         String deck = selectedDeck(command.deck());
-        SecretWord secretWord = wordDeckProvider.nextWord(roomCode, deck);
+        SecretWord secretWord = wordDeckProvider.nextWord(roomCode, deck, command.customWords());
         RoundId roundId = new RoundId(UUID.randomUUID());
         PlayerId drawerId = command.drawerId() == null ? null : new PlayerId(command.drawerId());
 

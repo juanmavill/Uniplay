@@ -12,7 +12,7 @@ class DefaultWordDeckProviderTest {
     void selectsWordFromRequestedAcademicDeck() {
         DefaultWordDeckProvider provider = new DefaultWordDeckProvider();
 
-        String word = provider.nextWord(new RoomCode("ABC123"), "sistemas").value();
+        String word = provider.nextWord(new RoomCode("ABC123"), "sistemas", null).value();
 
         assertThat(word).isIn("Algoritmo", "Servidor", "Compilador", "Variable", "Repositorio", "Arquitectura");
     }
@@ -21,7 +21,7 @@ class DefaultWordDeckProviderTest {
     void fallsBackToGeneralDeckWhenDeckIsMissing() {
         DefaultWordDeckProvider provider = new DefaultWordDeckProvider();
 
-        String word = provider.nextWord(new RoomCode("ABC123"), null).value();
+        String word = provider.nextWord(new RoomCode("ABC123"), null, null).value();
 
         assertThat(word).isNotBlank();
     }
@@ -30,7 +30,7 @@ class DefaultWordDeckProviderTest {
     void rejectsUnknownDeck() {
         DefaultWordDeckProvider provider = new DefaultWordDeckProvider();
 
-        assertThatThrownBy(() -> provider.nextWord(new RoomCode("ABC123"), "historia"))
+        assertThatThrownBy(() -> provider.nextWord(new RoomCode("ABC123"), "historia", null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("word deck");
     }

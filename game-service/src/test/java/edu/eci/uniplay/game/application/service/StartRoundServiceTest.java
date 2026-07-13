@@ -34,7 +34,7 @@ class StartRoundServiceTest {
         RecordingEventPublisher eventPublisher = new RecordingEventPublisher();
         StartRoundService service = new StartRoundService(
                 repository,
-                (roomCode, deck) -> new SecretWord("Campus"),
+                (roomCode, deck, customWords) -> new SecretWord("Campus"),
                 eventPublisher,
                 Duration.ofSeconds(45),
                 Clock.fixed(NOW, ZoneOffset.UTC)
@@ -44,7 +44,8 @@ class StartRoundServiceTest {
                 "abc123",
                 "ALL_DRAW",
                 "sistemas",
-                UUID.fromString("22222222-2222-2222-2222-222222222222")
+                UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                null
         ));
 
         assertThat(result.roomCode()).isEqualTo("ABC123");
