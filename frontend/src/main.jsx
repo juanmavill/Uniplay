@@ -1,6 +1,6 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { Brush, Check, Copy, Eraser, Mic, MicOff, Play, RefreshCw, Send, Trophy, Users, Vote } from "lucide-react";
+import { Brush, Check, Copy, Eraser, Mic, MicOff, Play, RefreshCw, Send, Trophy, Users, Volume2, Vote } from "lucide-react";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { Room, RoomEvent, Track } from "livekit-client";
@@ -50,12 +50,13 @@ function App() {
   const [roundLimit, setRoundLimit] = React.useState(() => clampRoundLimit(localStorage.getItem("uniplay.roundLimit") || DEFAULT_ROUND_LIMIT));
   const [roundsStarted, setRoundsStarted] = React.useState(0);
   const [candidateId, setCandidateId] = React.useState("");
-  const [voice, setVoice] = React.useState({ connected: false, muted: true, roomName: "" });
+  const [voice, setVoice] = React.useState(initialVoiceState);
   const [stompState, setStompState] = React.useState("offline");
   const [turnNumber, setTurnNumber] = React.useState(0);
   const [isBusy, setIsBusy] = React.useState(false);
   const [error, setError] = React.useState("");
   const livekitRoomRef = React.useRef(null);
+  const localSpeakingRef = React.useRef(false);
   const countedRoundIdsRef = React.useRef(new Set());
 
   const api = React.useMemo(() => createApiClient(gatewayUrl), [gatewayUrl]);
@@ -222,7 +223,7 @@ function App() {
           }
         });
         client.subscribe(`/topic/rooms/${currentRoomCode}/voice`, (message) => {
-          handleVoiceEvent(safeJson(message.body), setVoice);
+          handleVoiceEvent(safeJson(message.body), setVoice, player?.playerId);
         });
         client.subscribe(`/topic/rooms/${currentRoomCode}/draw`, (message) => {
           window.dispatchEvent(new CustomEvent("uniplay:draw", { detail: safeJson(message.body) }));
@@ -430,13 +431,15 @@ function App() {
         throw new Error("Unete a una sala antes de activar voz");
       }
       livekitRoomRef.current?.disconnect();
-      document.querySelectorAll("[data-uniplay-voice-audio='remote']").forEach((element) => element.remove());
-      const token = await api.createVoiceToken(currentRoomCode, player.playerId, player.playerName);
+      removeVoiceAudioElements();
       const lkRoom = new Room({ adaptiveStream: true, dynacast: true });
+      setVoice((previous) => ({ ...previous, status: "connecting", permissionDenied: false }));
+      void lkRoom.startAudio();
       lkRoom.on(RoomEvent.TrackSubscribed, (track) => {
         if (track.kind === Track.Kind.Audio) {
           const element = track.attach();
           element.autoplay = true;
+          element.playsInline = true;
           element.dataset.uniplayVoiceAudio = "remote";
           document.body.appendChild(element);
         }
@@ -445,21 +448,76 @@ function App() {
         track.detach().forEach((element) => element.remove());
       });
       lkRoom.on(RoomEvent.Disconnected, () => {
-        document.querySelectorAll("[data-uniplay-voice-audio='remote']").forEach((element) => element.remove());
+        removeVoiceAudioElements();
         livekitRoomRef.current = null;
-        setVoice((previous) => ({ ...previous, connected: false, muted: true }));
+        localSpeakingRef.current = false;
+        setVoice(initialVoiceState());
       });
-      await lkRoom.connect(token.livekitUrl, token.token);
-      livekitRoomRef.current = lkRoom;
-      setVoice({ connected: true, muted: true, roomName: token.voiceRoomName });
+      lkRoom.on(RoomEvent.ConnectionStateChanged, (status) => {
+        setVoice((previous) => ({
+          ...previous,
+          connected: status === "connected" || status === "reconnecting" || status === "signalReconnecting",
+          status
+        }));
+      });
+      lkRoom.on(RoomEvent.AudioPlaybackStatusChanged, (playing) => {
+        setVoice((previous) => ({ ...previous, audioBlocked: !playing }));
+      });
+      const updateParticipantCount = () => {
+        setVoice((previous) => ({ ...previous, participantCount: lkRoom.remoteParticipants.size + 1 }));
+      };
+      lkRoom.on(RoomEvent.ParticipantConnected, updateParticipantCount);
+      lkRoom.on(RoomEvent.ParticipantDisconnected, updateParticipantCount);
+      lkRoom.on(RoomEvent.ActiveSpeakersChanged, (participants) => {
+        const speakingNames = participants.map((participant) => participant.name || "Jugador");
+        const localSpeaking = participants.some((participant) => participant.identity === player.playerId);
+        setVoice((previous) => ({ ...previous, speakingNames }));
+        if (localSpeaking !== localSpeakingRef.current) {
+          localSpeakingRef.current = localSpeaking;
+          api.setSpeaking(currentRoomCode, player.playerId, localSpeaking).catch(() => {});
+        }
+      });
+      lkRoom.on(RoomEvent.MediaDevicesError, () => {
+        setVoice((previous) => ({ ...previous, muted: true, permissionDenied: true }));
+      });
+
+      try {
+        const token = await api.createVoiceToken(currentRoomCode, player.playerId, player.playerName);
+        await lkRoom.connect(token.livekitUrl, token.token);
+        livekitRoomRef.current = lkRoom;
+        setVoice((previous) => ({
+          ...previous,
+          connected: true,
+          muted: true,
+          roomName: token.voiceRoomName,
+          status: "connected",
+          participantCount: lkRoom.remoteParticipants.size + 1
+        }));
+        await lkRoom.startAudio();
+        try {
+          await lkRoom.localParticipant.setMicrophoneEnabled(true);
+          setVoice((previous) => ({ ...previous, muted: false, permissionDenied: false }));
+          await api.setMuted(currentRoomCode, player.playerId, false).catch(() => {});
+        } catch (microphoneError) {
+          setVoice((previous) => ({ ...previous, muted: true, permissionDenied: true }));
+          throw new Error("Conectado para escuchar. El navegador no permitio usar el microfono");
+        }
+      } catch (connectionError) {
+        if (!livekitRoomRef.current) {
+          lkRoom.disconnect();
+          setVoice(initialVoiceState());
+        }
+        throw connectionError;
+      }
     });
   }
 
   function disconnectVoice() {
     livekitRoomRef.current?.disconnect();
     livekitRoomRef.current = null;
-    document.querySelectorAll("[data-uniplay-voice-audio='remote']").forEach((element) => element.remove());
-    setVoice({ connected: false, muted: true, roomName: "" });
+    localSpeakingRef.current = false;
+    removeVoiceAudioElements();
+    setVoice(initialVoiceState());
   }
 
   async function toggleMute() {
@@ -472,8 +530,18 @@ function App() {
       }
       const nextMuted = !voice.muted;
       await livekitRoomRef.current.localParticipant.setMicrophoneEnabled(!nextMuted);
-      const result = await api.setMuted(currentRoomCode, player.playerId, nextMuted);
-      setVoice((previous) => ({ ...previous, muted: result.muted }));
+      setVoice((previous) => ({ ...previous, muted: nextMuted, permissionDenied: false }));
+      await api.setMuted(currentRoomCode, player.playerId, nextMuted).catch(() => {});
+    });
+  }
+
+  async function resumeVoiceAudio() {
+    await runAction(async () => {
+      if (!livekitRoomRef.current) {
+        throw new Error("Entra al canal de voz antes de activar el audio");
+      }
+      await livekitRoomRef.current.startAudio();
+      setVoice((previous) => ({ ...previous, audioBlocked: false }));
     });
   }
 
@@ -701,10 +769,14 @@ function App() {
             <div className="voice-status">
               <span className={voice.connected ? "pulse on" : "pulse"} />
               <div>
-                <strong>{voice.connected ? voice.muted ? "Escuchando" : "Microfono activo" : "Sin voz"}</strong>
-                <small>{voice.roomName || "Canal de sala"}</small>
+                <strong>{voiceStatusLabel(voice)}</strong>
+                <small>{voice.connected ? `${voice.participantCount} en voz` : voice.roomName || "Canal de sala"}</small>
               </div>
             </div>
+            {voice.speakingNames.length > 0 && (
+              <p className="voice-speaking">Hablando: {voice.speakingNames.join(", ")}</p>
+            )}
+            {voice.permissionDenied && <p className="voice-warning">Permiso de microfono bloqueado</p>}
             <div className="button-row">
               {voice.connected ? (
                 <button onClick={disconnectVoice} disabled={isBusy}>
@@ -720,6 +792,12 @@ function App() {
                 {voice.muted ? <MicOff size={16} /> : <Mic size={16} />}
                 {voice.muted ? "Activar microfono" : "Silenciar"}
               </button>
+              {voice.audioBlocked && (
+                <button onClick={resumeVoiceAudio} disabled={isBusy}>
+                  <Volume2 size={16} />
+                  Activar audio
+                </button>
+              )}
             </div>
           </section>
 
@@ -923,6 +1001,7 @@ function createApiClient(baseUrl) {
     castVote: (code, roundId, voterId, candidateId) => request(normalizedBaseUrl, `/games/${code}/rounds/${roundId}/votes`, { method: "POST", body: { voterId, candidateId } }),
     createVoiceToken: (roomCode, playerId, playerName) => request(normalizedBaseUrl, "/voice/token", { method: "POST", body: { roomCode, playerId, playerName } }),
     setMuted: (roomCode, playerId, muted) => request(normalizedBaseUrl, "/voice/mute", { method: "POST", body: { roomCode, playerId, muted } }),
+    setSpeaking: (roomCode, playerId, speaking) => request(normalizedBaseUrl, "/voice/speaking", { method: "POST", body: { roomCode, playerId, speaking } }),
   };
 }
 
@@ -994,10 +1073,40 @@ function eventType(payload) {
   return payload?.type || payload?.eventType || payload?.name;
 }
 
-function handleVoiceEvent(payload, setVoice) {
-  if (typeof payload?.muted === "boolean") {
+function handleVoiceEvent(payload, setVoice, currentPlayerId) {
+  if (payload?.participantIdentity === currentPlayerId && typeof payload?.muted === "boolean") {
     setVoice((previous) => ({ ...previous, muted: payload.muted }));
   }
+}
+
+function initialVoiceState() {
+  return {
+    connected: false,
+    muted: true,
+    roomName: "",
+    status: "disconnected",
+    participantCount: 0,
+    speakingNames: [],
+    audioBlocked: false,
+    permissionDenied: false
+  };
+}
+
+function voiceStatusLabel(voice) {
+  if (voice.status === "connecting") {
+    return "Conectando";
+  }
+  if (voice.status === "reconnecting" || voice.status === "signalReconnecting") {
+    return "Reconectando";
+  }
+  if (!voice.connected) {
+    return "Sin voz";
+  }
+  return voice.muted ? "Escuchando" : "Microfono activo";
+}
+
+function removeVoiceAudioElements() {
+  document.querySelectorAll("[data-uniplay-voice-audio='remote']").forEach((element) => element.remove());
 }
 
 function safeJson(value) {

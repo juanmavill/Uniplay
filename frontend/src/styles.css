@@ -276,6 +276,21 @@ h1 {
   font-size: 13px;
 }
 
+.voice-speaking,
+.voice-warning {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.voice-speaking {
+  color: #16734a;
+}
+
+.voice-warning {
+  color: #b12c2c;
+}
+
 .good {
   color: #197a55;
 }
