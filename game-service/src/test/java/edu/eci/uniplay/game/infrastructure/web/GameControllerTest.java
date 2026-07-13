@@ -107,6 +107,39 @@ class GameControllerTest {
     }
 
     @Test
+    void forwardsCustomWordsWhenStartingRound() throws Exception {
+        when(startRoundUseCase.startRound(any())).thenReturn(new StartRoundResult(
+                "ABC123",
+                ROUND_ID,
+                "Astronauta",
+                PLAYER_ID,
+                "CLASSIC",
+                "CUSTOM",
+                "ACTIVE",
+                NOW,
+                NOW.plusSeconds(60)
+        ));
+
+        mockMvc.perform(post("/games/ABC123/rounds")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "mode": "CLASSIC",
+                                  "deck": "CUSTOM",
+                                  "drawerId": "22222222-2222-2222-2222-222222222222",
+                                  "customWords": ["Dragon", "Castillo", "Astronauta"]
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.deck").value("CUSTOM"));
+
+        ArgumentCaptor<StartRoundCommand> captor = ArgumentCaptor.forClass(StartRoundCommand.class);
+        verify(startRoundUseCase).startRound(captor.capture());
+        assertThat(captor.getValue().customWords())
+                .containsExactly("Dragon", "Castillo", "Astronauta");
+    }
+
+    @Test
     void submitsAnswer() throws Exception {
         when(submitAnswerUseCase.submitAnswer(any())).thenReturn(new SubmitAnswerResult(
                 "ABC123",

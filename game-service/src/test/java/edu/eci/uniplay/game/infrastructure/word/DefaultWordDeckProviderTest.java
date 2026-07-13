@@ -34,4 +34,43 @@ class DefaultWordDeckProviderTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("word deck");
     }
+
+    @Test
+    void selectsWordFromValidatedCustomDeck() {
+        DefaultWordDeckProvider provider = new DefaultWordDeckProvider();
+
+        String word = provider.nextWord(
+                new RoomCode("ABC123"),
+                "custom",
+                java.util.List.of("Dragon", "Castillo", "Astronauta")
+        ).value();
+
+        assertThat(word).isIn("Dragon", "Castillo", "Astronauta");
+    }
+
+    @Test
+    void rejectsCustomDeckWithFewerThanThreeUniqueWords() {
+        DefaultWordDeckProvider provider = new DefaultWordDeckProvider();
+
+        assertThatThrownBy(() -> provider.nextWord(
+                new RoomCode("ABC123"),
+                "CUSTOM",
+                java.util.List.of("Dragon", "Dragon", "Castillo")
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("between 3 and 100 unique words");
+    }
+
+    @Test
+    void rejectsCustomWordsLongerThanFortyCharacters() {
+        DefaultWordDeckProvider provider = new DefaultWordDeckProvider();
+
+        assertThatThrownBy(() -> provider.nextWord(
+                new RoomCode("ABC123"),
+                "CUSTOM",
+                java.util.List.of("Dragon", "Castillo", "x".repeat(41))
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("at most 40 characters");
+    }
 }
