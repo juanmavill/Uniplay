@@ -187,6 +187,20 @@ services:
       prometheus:
         condition: service_started
 
+  k6:
+    image: grafana/k6:0.54.0
+    profiles:
+      - load-test
+    environment:
+      K6_BASE_URL: http://api-gateway:8080
+      K6_PROFILE: ${K6_PROFILE:-smoke}
+    volumes:
+      - ../tests/load:/scripts:ro
+    command: run /scripts/uniplay.js
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+
   livekit:
     image: livekit/livekit-server:latest
     container_name: uniplay-livekit
