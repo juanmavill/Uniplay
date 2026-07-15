@@ -12,6 +12,23 @@ const DEFAULT_ROUND_LIMIT = 3;
 const INITIAL_PARAMS = new URLSearchParams(window.location.search);
 const INITIAL_ROUTE = parsePlayerRoute(window.location.pathname);
 
+function createClientId() {
+  if (typeof crypto?.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  if (typeof crypto?.getRandomValues === "function") {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    return [...bytes].map((byte, index) => {
+      const value = byte.toString(16).padStart(2, "0");
+      return [4, 6, 8, 10].includes(index) ? `-${value}` : value;
+    }).join("");
+  }
+  return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 function parsePlayerRoute(pathname) {
   const match = pathname.match(/^\/sala\/([^/]+)\/jugador\/([^/]+)\/?$/);
   if (!match) {
@@ -269,7 +286,7 @@ function App() {
 
   function addSystemMessage(text, tone = "system") {
     setChatMessages((current) => [
-      { id: crypto.randomUUID(), type: "system", tone, text },
+      { id: createClientId(), type: "system", tone, text },
       ...current
     ].slice(0, 18));
   }
@@ -303,7 +320,7 @@ function App() {
       setTurnNumber(0);
       setRoundsStarted(0);
       countedRoundIdsRef.current = new Set();
-      setChatMessages([{ id: crypto.randomUUID(), type: "system", tone: "system", text: `Sala ${joined.code} creada` }]);
+      setChatMessages([{ id: createClientId(), type: "system", tone: "system", text: `Sala ${joined.code} creada` }]);
       navigateToPlayer(joined.code, joined.playerId);
     });
   }
@@ -383,13 +400,13 @@ function App() {
       setChatMessages((current) => [
         result.correct
           ? {
-              id: crypto.randomUUID(),
+              id: createClientId(),
               type: "system",
               tone: "success",
               text: `${player.playerName} adivino la palabra`
             }
           : {
-              id: crypto.randomUUID(),
+              id: createClientId(),
               type: "guess",
               author: player.playerName,
               text: trimmedAnswer
@@ -1063,7 +1080,7 @@ function handleRoundEvent(payload, setChatMessages, currentPlayerId) {
       return;
     }
     setChatMessages((current) => [
-      { id: crypto.randomUUID(), type: "system", tone: "success", text: "Un jugador adivino la palabra" },
+      { id: createClientId(), type: "system", tone: "success", text: "Un jugador adivino la palabra" },
       ...current
     ].slice(0, 18));
   }
