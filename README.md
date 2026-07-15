@@ -52,6 +52,13 @@ Ejemplos:
 Los servicios se comunican exclusivamente por red mediante REST o Redis
 Pub/Sub. No comparten memoria, base de datos ni logica de dominio.
 
+## Observabilidad y carga
+
+La infraestructura local incluye Prometheus en `http://localhost:9090` y
+Grafana en `http://localhost:3000`. El dashboard, las alertas y los perfiles de
+k6 de hasta 500 usuarios concurrentes estan descritos en
+[`docs/observability.md`](docs/observability.md).
+
 ## Estructura esperada
 
 ```text
