@@ -143,6 +143,32 @@ services:
       retries: 5
       start_period: 30s
 
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    container_name: uniplay-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-lifecycle
+    ports:
+      - "${PROMETHEUS_PORT:-9090}:9090"
+    volumes:
+      - ./observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+      room-service:
+        condition: service_healthy
+      game-service:
+        condition: service_healthy
+      realtime-service:
+        condition: service_healthy
+      metrics-service:
+        condition: service_healthy
+      voice-service:
+        condition: service_healthy
+
   livekit:
     image: livekit/livekit-server:latest
     container_name: uniplay-livekit
@@ -189,4 +215,5 @@ services:
       start_period: 5s
 
 volumes:
+  prometheus-data:
   redis-data:
