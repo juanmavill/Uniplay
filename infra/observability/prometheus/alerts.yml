@@ -1,0 +1,52 @@
+groups:
+  - name: uniplay-availability
+    rules:
+      - alert: UniPlayServiceDown
+        expr: up{job="uniplay-services"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Servicio UniPlay no disponible"
+          description: "Prometheus no puede consultar {{ $labels.instance }} desde hace al menos un minuto."
+
+  - name: uniplay-performance
+    rules:
+      - alert: UniPlayHighHttpErrorRate
+        expr: |
+          sum by (application) (rate(http_server_requests_seconds_count{status=~"5.."}[5m]))
+          /
+          clamp_min(sum by (application) (rate(http_server_requests_seconds_count[5m])), 0.000001)
+          > 0.01
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Tasa elevada de errores HTTP en {{ $labels.application }}"
+          description: "Mas del 1% de las solicitudes han respondido con 5xx durante cinco minutos."
+
+      - alert: UniPlayHighHttpLatency
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, application) (rate(http_server_requests_seconds_bucket[5m]))
+          ) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latencia HTTP elevada en {{ $labels.application }}"
+          description: "La latencia p95 ha superado 500 ms durante cinco minutos."
+
+      - alert: UniPlayHighJvmHeapUsage
+        expr: |
+          sum by (application) (jvm_memory_used_bytes{area="heap"})
+          /
+          sum by (application) (jvm_memory_max_bytes{area="heap"} > 0)
+          > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Uso elevado de heap en {{ $labels.application }}"
+          description: "El proceso lleva diez minutos utilizando mas del 85% del heap JVM disponible."
