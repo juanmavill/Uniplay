@@ -150,6 +150,8 @@ class GameControllerTest {
                 true,
                 true,
                 100,
+                89,
+                false,
                 "FINISHED",
                 NOW
         ));
@@ -165,6 +167,7 @@ class GameControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.correct").value(true))
                 .andExpect(jsonPath("$.score").value(100))
+                .andExpect(jsonPath("$.pointsAwarded").value(89))
                 .andExpect(jsonPath("$.roundStatus").value("FINISHED"));
 
         ArgumentCaptor<SubmitAnswerCommand> captor = ArgumentCaptor.forClass(SubmitAnswerCommand.class);

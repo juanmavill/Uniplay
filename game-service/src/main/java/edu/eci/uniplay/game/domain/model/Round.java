@@ -119,6 +119,20 @@ public record Round(
         return guessedPlayers.contains(playerId);
     }
 
+    public boolean hasMajorityGuessed() {
+        return !eligibleGuessers.isEmpty() && guessedPlayers.size() > eligibleGuessers.size() / 2;
+    }
+
+    public Round markDrawerBonusAwarded() {
+        if (drawerBonusAwarded) {
+            return this;
+        }
+        return new Round(
+                id, secretWord, mode, drawerId, status, startedAt, endsAt, guessedBy, finishedAt,
+                eligibleGuessers, guessedPlayers, true, votes
+        );
+    }
+
     public Round registerCorrectGuess(PlayerId playerId, Instant answeredAt) {
         if (!isActive()) {
             throw new RoundNotActiveException("round " + id.value() + " is not active");

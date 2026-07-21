@@ -44,6 +44,7 @@ class SubmitAnswerServiceTest {
                 repository,
                 eventPublisher,
                 100,
+                50,
                 Clock.fixed(ANSWERED_AT, ZoneOffset.UTC)
         );
 
@@ -51,12 +52,13 @@ class SubmitAnswerServiceTest {
 
         assertThat(result.correct()).isTrue();
         assertThat(result.newlyGuessed()).isTrue();
-        assertThat(result.score()).isEqualTo(100);
+        assertThat(result.score()).isEqualTo(89);
+        assertThat(result.pointsAwarded()).isEqualTo(89);
         assertThat(result.roundStatus()).isEqualTo("ACTIVE");
-        assertThat(repository.savedSession.scoreOf(new PlayerId(PLAYER_ID))).isEqualTo(100);
+        assertThat(repository.savedSession.scoreOf(new PlayerId(PLAYER_ID))).isEqualTo(89);
         assertThat(eventPublisher.roundGuessedEvents).singleElement().satisfies(event -> {
             assertThat(event.playerId()).isEqualTo(PLAYER_ID);
-            assertThat(event.score()).isEqualTo(100);
+            assertThat(event.score()).isEqualTo(89);
             assertThat(event.occurredAt()).isEqualTo(ANSWERED_AT);
         });
         assertThat(eventPublisher.roundFinishedEvents).isEmpty();
@@ -70,6 +72,7 @@ class SubmitAnswerServiceTest {
                 repository,
                 eventPublisher,
                 100,
+                50,
                 Clock.fixed(ANSWERED_AT, ZoneOffset.UTC)
         );
 

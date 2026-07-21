@@ -12,6 +12,8 @@ public record SubmitAnswerResponse(
         boolean correct,
         boolean newlyGuessed,
         int score,
+        int pointsAwarded,
+        boolean drawerBonusAwarded,
         String roundStatus,
         Instant answeredAt
 ) {
@@ -24,6 +26,8 @@ public record SubmitAnswerResponse(
                 result.correct(),
                 result.newlyGuessed(),
                 result.score(),
+                result.pointsAwarded(),
+                result.drawerBonusAwarded(),
                 result.roundStatus(),
                 result.answeredAt()
         );

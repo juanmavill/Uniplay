@@ -15,6 +15,7 @@ class GamePropertiesTest {
     void bindsGameProperties() {
         MapConfigurationPropertySource source = new MapConfigurationPropertySource();
         source.put("uniplay.game.points-per-correct-answer", "150");
+        source.put("uniplay.game.drawer-majority-bonus", "75");
         source.put("uniplay.game.round-duration", "PT45S");
         source.put("uniplay.game.session-ttl", "PT1H");
 
@@ -22,6 +23,7 @@ class GamePropertiesTest {
                 .bind("uniplay.game", GameProperties.class);
 
         assertThat(result.get().pointsPerCorrectAnswer()).isEqualTo(150);
+        assertThat(result.get().drawerMajorityBonus()).isEqualTo(75);
         assertThat(result.get().roundDuration()).isEqualTo(Duration.ofSeconds(45));
         assertThat(result.get().sessionTtl()).isEqualTo(Duration.ofHours(1));
     }

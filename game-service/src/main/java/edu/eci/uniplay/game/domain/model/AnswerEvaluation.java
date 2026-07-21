@@ -5,7 +5,9 @@ public record AnswerEvaluation(
         boolean correct,
         boolean newlyGuessed,
         int score,
+        int pointsAwarded,
         RoundId roundId,
-        boolean roundFinished
+        boolean roundFinished,
+        boolean drawerBonusAwarded
 ) {
 }

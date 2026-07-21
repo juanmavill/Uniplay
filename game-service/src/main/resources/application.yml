@@ -30,5 +30,6 @@ management:
 uniplay:
   game:
     points-per-correct-answer: ${GAME_POINTS_PER_CORRECT_ANSWER:100}
+    drawer-majority-bonus: ${GAME_DRAWER_MAJORITY_BONUS:50}
     round-duration: ${GAME_ROUND_DURATION:PT1M}
     session-ttl: ${GAME_SESSION_TTL:PT2H}

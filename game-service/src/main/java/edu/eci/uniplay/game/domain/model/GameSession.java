@@ -51,6 +51,16 @@ public final class GameSession {
     }
 
     public AnswerEvaluation submitAnswer(PlayerId playerId, String answer, int points, Instant answeredAt) {
+        return submitAnswer(playerId, answer, points, 0, answeredAt);
+    }
+
+    public AnswerEvaluation submitAnswer(
+            PlayerId playerId,
+            String answer,
+            int points,
+            int drawerMajorityBonus,
+            Instant answeredAt
+    ) {
         if (round == null || !round.isActive()) {
             throw new RoundNotActiveException("room " + roomCode.value() + " does not have an active round");
         }
@@ -61,10 +71,10 @@ public final class GameSession {
         int currentScore = scoreOf(playerId);
 
         if (!round.matches(answer)) {
-            return new AnswerEvaluation(this, false, false, currentScore, round.id(), false);
+            return new AnswerEvaluation(this, false, false, currentScore, 0, round.id(), false, false);
         }
         if (round.hasGuessed(playerId)) {
-            return new AnswerEvaluation(this, true, false, currentScore, round.id(), false);
+            return new AnswerEvaluation(this, true, false, currentScore, 0, round.id(), false, false);
         }
 
         Map<PlayerId, Integer> updatedScores = new LinkedHashMap<>(scores);
@@ -72,8 +82,17 @@ public final class GameSession {
         updatedScores.put(playerId, newScore);
 
         Round updatedRound = round.registerCorrectGuess(playerId, answeredAt);
+        boolean awardDrawerBonus = updatedRound.drawerId() != null
+                && !updatedRound.drawerBonusAwarded()
+                && updatedRound.hasMajorityGuessed();
+        if (awardDrawerBonus) {
+            updatedScores.merge(updatedRound.drawerId(), drawerMajorityBonus, Integer::sum);
+            updatedRound = updatedRound.markDrawerBonusAwarded();
+        }
         GameSession updatedSession = new GameSession(roomCode, updatedRound, updatedScores);
-        return new AnswerEvaluation(updatedSession, true, true, newScore, round.id(), !updatedRound.isActive());
+        return new AnswerEvaluation(
+                updatedSession, true, true, newScore, points, round.id(), !updatedRound.isActive(), awardDrawerBonus
+        );
     }
 
     public GameSession expireRound(RoundId roundId, Instant expiredAt) {

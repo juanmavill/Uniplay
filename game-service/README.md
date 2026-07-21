@@ -168,6 +168,7 @@ puntajes por jugador.
 |---|---|
 | `GAME_SERVICE_PORT` | `8082` |
 | `GAME_POINTS_PER_CORRECT_ANSWER` | `100` |
+| `GAME_DRAWER_MAJORITY_BONUS` | `50` |
 | `GAME_ROUND_DURATION` | `PT1M` |
 | `GAME_SESSION_TTL` | `PT2H` |
 | `REDIS_HOST` | `localhost` |

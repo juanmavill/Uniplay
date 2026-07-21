@@ -80,6 +80,7 @@ public class GameServiceConfiguration {
                 gameSessionRepository,
                 domainEventPublisher,
                 gameProperties.pointsPerCorrectAnswer(),
+                gameProperties.drawerMajorityBonus(),
                 clock
         );
     }

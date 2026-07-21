@@ -405,7 +405,7 @@ function App() {
               id: createClientId(),
               type: "system",
               tone: "success",
-              text: `${player.playerName} adivino la palabra`
+              text: `${player.playerName} adivino la palabra y gano ${result.pointsAwarded} puntos`
             }
           : result.correct
             ? {

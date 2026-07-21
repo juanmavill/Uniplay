@@ -10,6 +10,8 @@ public record SubmitAnswerResult(
         boolean correct,
         boolean newlyGuessed,
         int score,
+        int pointsAwarded,
+        boolean drawerBonusAwarded,
         String roundStatus,
         Instant answeredAt
 ) {

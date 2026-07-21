@@ -15,6 +15,8 @@ class GameSessionTest {
     private static final RoundId ROUND_ID = new RoundId(UUID.fromString("11111111-1111-1111-1111-111111111111"));
     private static final PlayerId PLAYER_ID = new PlayerId(UUID.fromString("22222222-2222-2222-2222-222222222222"));
     private static final PlayerId OTHER_PLAYER_ID = new PlayerId(UUID.fromString("33333333-3333-3333-3333-333333333333"));
+    private static final PlayerId THIRD_PLAYER_ID = new PlayerId(UUID.fromString("44444444-4444-4444-4444-444444444444"));
+    private static final PlayerId DRAWER_ID = new PlayerId(UUID.fromString("55555555-5555-5555-5555-555555555555"));
     private static final Instant STARTED_AT = Instant.parse("2026-07-07T12:00:00Z");
     private static final Instant ANSWERED_AT = Instant.parse("2026-07-07T12:00:05Z");
     private static final Instant ENDS_AT = Instant.parse("2026-07-07T12:01:00Z");
@@ -91,6 +93,27 @@ class GameSessionTest {
         assertThat(duplicateEvaluation.newlyGuessed()).isFalse();
         assertThat(duplicateEvaluation.score()).isEqualTo(100);
         assertThat(duplicateEvaluation.session()).isSameAs(firstEvaluation.session());
+    }
+
+    @Test
+    void awardsDrawerBonusOnceWhenMostPlayersGuess() {
+        GameSession session = GameSession.newFor(ROOM_CODE)
+                .startRound(
+                        ROUND_ID, new SecretWord("Biblioteca"), RoundMode.CLASSIC, DRAWER_ID,
+                        Set.of(PLAYER_ID, OTHER_PLAYER_ID, THIRD_PLAYER_ID), STARTED_AT, ENDS_AT
+                );
+
+        AnswerEvaluation first = session.submitAnswer(PLAYER_ID, "biblioteca", 90, 50, ANSWERED_AT);
+        AnswerEvaluation second = first.session()
+                .submitAnswer(OTHER_PLAYER_ID, "biblioteca", 70, 50, ANSWERED_AT.plusSeconds(10));
+        AnswerEvaluation third = second.session()
+                .submitAnswer(THIRD_PLAYER_ID, "biblioteca", 40, 50, ANSWERED_AT.plusSeconds(20));
+
+        assertThat(first.drawerBonusAwarded()).isFalse();
+        assertThat(second.drawerBonusAwarded()).isTrue();
+        assertThat(third.drawerBonusAwarded()).isFalse();
+        assertThat(third.session().scoreOf(DRAWER_ID)).isEqualTo(50);
+        assertThat(third.session().round()).get().extracting(Round::drawerBonusAwarded).isEqualTo(true);
     }
 
     @Test

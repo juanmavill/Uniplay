@@ -2,6 +2,7 @@ package edu.eci.uniplay.game.application.service;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.Duration;
 
 import edu.eci.uniplay.game.application.dto.SubmitAnswerCommand;
 import edu.eci.uniplay.game.application.dto.SubmitAnswerResult;
@@ -23,17 +24,20 @@ public class SubmitAnswerService implements SubmitAnswerUseCase {
     private final GameSessionRepository gameSessionRepository;
     private final DomainEventPublisher domainEventPublisher;
     private final int pointsPerCorrectAnswer;
+    private final int drawerMajorityBonus;
     private final Clock clock;
 
     public SubmitAnswerService(
             GameSessionRepository gameSessionRepository,
             DomainEventPublisher domainEventPublisher,
             int pointsPerCorrectAnswer,
+            int drawerMajorityBonus,
             Clock clock
     ) {
         this.gameSessionRepository = gameSessionRepository;
         this.domainEventPublisher = domainEventPublisher;
         this.pointsPerCorrectAnswer = pointsPerCorrectAnswer;
+        this.drawerMajorityBonus = drawerMajorityBonus;
         this.clock = clock;
     }
 
@@ -44,10 +48,12 @@ public class SubmitAnswerService implements SubmitAnswerUseCase {
         GameSession session = gameSessionRepository.findByRoomCode(roomCode)
                 .orElseGet(() -> GameSession.newFor(roomCode));
         Instant answeredAt = Instant.now(clock);
+        int points = pointsFor(session, answeredAt);
         AnswerEvaluation evaluation = session.submitAnswer(
                 playerId,
                 command.answer(),
-                pointsPerCorrectAnswer,
+                points,
+                drawerMajorityBonus,
                 answeredAt
         );
 
@@ -81,8 +87,21 @@ public class SubmitAnswerService implements SubmitAnswerUseCase {
                 evaluation.correct(),
                 evaluation.newlyGuessed(),
                 evaluation.score(),
+                evaluation.pointsAwarded(),
+                evaluation.drawerBonusAwarded(),
                 roundStatus,
                 answeredAt
         );
+    }
+
+    private int pointsFor(GameSession session, Instant answeredAt) {
+        var round = session.round().orElse(null);
+        if (round == null) {
+            return pointsPerCorrectAnswer;
+        }
+        long totalMillis = Duration.between(round.startedAt(), round.endsAt()).toMillis();
+        long remainingMillis = Math.max(0, Duration.between(answeredAt, round.endsAt()).toMillis());
+        double proportionalPoints = (double) pointsPerCorrectAnswer * remainingMillis / totalMillis;
+        return Math.max(1, Math.min(pointsPerCorrectAnswer, (int) Math.ceil(proportionalPoints)));
     }
 }
