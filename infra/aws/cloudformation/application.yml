@@ -292,6 +292,7 @@ Resources:
         - Field: path-pattern
           PathPatternConfig:
             Values:
+              - /salas*
               - /rooms*
               - /games*
               - /metrics*
@@ -500,6 +501,12 @@ Resources:
         HttpVersion: http2and3
         IPV6Enabled: true
         CacheBehaviors:
+          - PathPattern: /salas*
+            TargetOriginId: application-alb
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
           - PathPattern: /rooms*
             TargetOriginId: application-alb
             ViewerProtocolPolicy: https-only
