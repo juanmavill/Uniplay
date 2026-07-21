@@ -30,7 +30,21 @@ for service in api-gateway room-service game-service realtime-service voice-serv
   docker build \
     --tag "$REGISTRY_PREFIX/$service:$IMAGE_TAG" \
     "$service"
-  docker push "$REGISTRY_PREFIX/$service:$IMAGE_TAG"
+
+  pushed=false
+  for attempt in 1 2 3; do
+    if docker push "$REGISTRY_PREFIX/$service:$IMAGE_TAG"; then
+      pushed=true
+      break
+    fi
+    echo "Push attempt $attempt failed for $service"
+    sleep $((attempt * 5))
+  done
+
+  if [ "$pushed" != true ]; then
+    echo "Unable to push $service after 3 attempts" >&2
+    exit 1
+  fi
 done
 
 echo "Building static frontend"
