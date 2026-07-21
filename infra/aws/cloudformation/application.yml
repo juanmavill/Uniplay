@@ -415,69 +415,6 @@ Resources:
       Port: 7882
       Protocol: UDP
 
-  ApiCachePolicy:
-    Type: AWS::CloudFront::CachePolicy
-    Properties:
-      CachePolicyConfig:
-        Comment: Disable caching for UniPlay dynamic requests
-        DefaultTTL: 0
-        MaxTTL: 0
-        MinTTL: 0
-        Name: !Sub ${ProjectName}-${EnvironmentName}-api-no-cache
-        ParametersInCacheKeyAndForwardedToOrigin:
-          CookiesConfig:
-            CookieBehavior: none
-          EnableAcceptEncodingBrotli: false
-          EnableAcceptEncodingGzip: false
-          HeadersConfig:
-            HeaderBehavior: none
-          QueryStringsConfig:
-            QueryStringBehavior: none
-
-  ApiOriginRequestPolicy:
-    Type: AWS::CloudFront::OriginRequestPolicy
-    Properties:
-      OriginRequestPolicyConfig:
-        Comment: Forward API, SockJS and WebSocket request data
-        CookiesConfig:
-          CookieBehavior: all
-        HeadersConfig:
-          HeaderBehavior: allExcept
-          Headers:
-            - Host
-        Name: !Sub ${ProjectName}-${EnvironmentName}-api-forward
-        QueryStringsConfig:
-          QueryStringBehavior: all
-
-  StaticCachePolicy:
-    Type: AWS::CloudFront::CachePolicy
-    Properties:
-      CachePolicyConfig:
-        Comment: Cache UniPlay static frontend assets
-        DefaultTTL: 3600
-        MaxTTL: 86400
-        MinTTL: 0
-        Name: !Sub ${ProjectName}-${EnvironmentName}-static
-        ParametersInCacheKeyAndForwardedToOrigin:
-          CookiesConfig:
-            CookieBehavior: none
-          EnableAcceptEncodingBrotli: true
-          EnableAcceptEncodingGzip: true
-          HeadersConfig:
-            HeaderBehavior: none
-          QueryStringsConfig:
-            QueryStringBehavior: none
-
-  FrontendOriginAccessControl:
-    Type: AWS::CloudFront::OriginAccessControl
-    Properties:
-      OriginAccessControlConfig:
-        Description: UniPlay private frontend bucket
-        Name: !Sub ${ProjectName}-${EnvironmentName}-frontend
-        OriginAccessControlOriginType: s3
-        SigningBehavior: always
-        SigningProtocol: sigv4
-
   MainDistribution:
     Type: AWS::CloudFront::Distribution
     Properties:
@@ -494,7 +431,7 @@ Resources:
             ResponsePagePath: /index.html
         DefaultCacheBehavior:
           AllowedMethods: [GET, HEAD, OPTIONS]
-          CachePolicyId: !Ref StaticCachePolicy
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
           Compress: true
           TargetOriginId: frontend-s3
           ViewerProtocolPolicy: redirect-to-https
@@ -507,53 +444,53 @@ Resources:
             TargetOriginId: application-alb
             ViewerProtocolPolicy: https-only
             AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
-            CachePolicyId: !Ref ApiCachePolicy
-            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
           - PathPattern: /games*
             TargetOriginId: application-alb
             ViewerProtocolPolicy: https-only
             AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
-            CachePolicyId: !Ref ApiCachePolicy
-            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
           - PathPattern: /metrics*
             TargetOriginId: application-alb
             ViewerProtocolPolicy: https-only
             AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
-            CachePolicyId: !Ref ApiCachePolicy
-            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
           - PathPattern: /voice*
             TargetOriginId: application-alb
             ViewerProtocolPolicy: https-only
             AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
-            CachePolicyId: !Ref ApiCachePolicy
-            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
           - PathPattern: /ws*
             TargetOriginId: application-alb
             ViewerProtocolPolicy: https-only
             AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
-            CachePolicyId: !Ref ApiCachePolicy
-            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
           - PathPattern: /actuator*
             TargetOriginId: application-alb
             ViewerProtocolPolicy: https-only
             AllowedMethods: [GET, HEAD, OPTIONS]
-            CachePolicyId: !Ref ApiCachePolicy
-            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
           - PathPattern: /grafana*
             TargetOriginId: application-alb
             ViewerProtocolPolicy: https-only
             AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
-            CachePolicyId: !Ref ApiCachePolicy
-            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
         Origins:
           - DomainName: !Sub
-              - ${Bucket}.s3.${AWS::Region}.amazonaws.com
+              - ${Bucket}.s3-website-${AWS::Region}.amazonaws.com
               - Bucket:
                   Fn::ImportValue: !Sub ${FoundationStackName}-FrontendBucketName
             Id: frontend-s3
-            OriginAccessControlId: !Ref FrontendOriginAccessControl
-            S3OriginConfig:
-              OriginAccessIdentity: ""
+            CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
           - CustomOriginConfig:
               HTTPPort: 80
               OriginProtocolPolicy: http-only
@@ -578,18 +515,14 @@ Resources:
       PolicyDocument:
         Version: "2012-10-17"
         Statement:
-          - Sid: AllowCloudFrontRead
+          - Sid: AllowPublicStaticRead
             Effect: Allow
-            Principal:
-              Service: cloudfront.amazonaws.com
+            Principal: "*"
             Action: s3:GetObject
             Resource: !Sub
               - arn:${AWS::Partition}:s3:::${Bucket}/*
               - Bucket:
                   Fn::ImportValue: !Sub ${FoundationStackName}-FrontendBucketName
-            Condition:
-              StringEquals:
-                AWS:SourceArn: !Sub arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${MainDistribution}
 
   LiveKitDistribution:
     Type: AWS::CloudFront::Distribution
@@ -598,8 +531,8 @@ Resources:
         Comment: Secure LiveKit signaling endpoint
         DefaultCacheBehavior:
           AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
-          CachePolicyId: !Ref ApiCachePolicy
-          OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
           TargetOriginId: livekit-nlb
           ViewerProtocolPolicy: https-only
         Enabled: true
