@@ -292,13 +292,31 @@ Resources:
         - Field: path-pattern
           PathPatternConfig:
             Values:
-              - /salas*
               - /rooms*
               - /games*
               - /metrics*
               - /voice*
       ListenerArn: !Ref AlbListener
       Priority: 10
+
+  RoomsApiListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref EdgeTargetGroup
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: X-UniPlay-Origin
+            Values:
+              - !Ref OriginVerifySecret
+        - Field: path-pattern
+          PathPatternConfig:
+            Values:
+              - /salas*
+      ListenerArn: !Ref AlbListener
+      Priority: 11
 
   RealtimeListenerRule:
     Type: AWS::ElasticLoadBalancingV2::ListenerRule
