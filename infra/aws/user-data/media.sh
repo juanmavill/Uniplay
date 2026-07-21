@@ -36,14 +36,16 @@ cat >/opt/uniplay/Caddyfile <<EOF
 $APP_DOMAIN {
   encode gzip zstd
 
-  @backend path /salas* /rooms* /games* /metrics* /voice* /ws* /actuator* /grafana*
-  reverse_proxy @backend http://$APPLICATION_ALB {
-    header_up X-UniPlay-Origin $ORIGIN_VERIFY_SECRET
-  }
+  route {
+    @backend path /salas* /rooms* /games* /metrics* /voice* /ws* /actuator* /grafana*
+    reverse_proxy @backend http://$APPLICATION_ALB {
+      header_up X-UniPlay-Origin $ORIGIN_VERIFY_SECRET
+    }
 
-  root * /srv/uniplay
-  try_files {path} /index.html
-  file_server
+    root * /srv/uniplay
+    try_files {path} /index.html
+    file_server
+  }
 }
 
 $LIVEKIT_DOMAIN {
