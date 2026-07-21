@@ -36,7 +36,7 @@ cat >/opt/uniplay/Caddyfile <<EOF
 $APP_DOMAIN {
   encode gzip zstd
 
-  @backend path /rooms* /games* /metrics* /voice* /ws* /actuator* /grafana*
+  @backend path /salas* /rooms* /games* /metrics* /voice* /ws* /actuator* /grafana*
   reverse_proxy @backend http://$APPLICATION_ALB {
     header_up X-UniPlay-Origin $ORIGIN_VERIFY_SECRET
   }
