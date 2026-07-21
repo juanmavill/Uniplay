@@ -297,18 +297,15 @@ Resources:
             Status: Enabled
             ExpirationInDays: 1
       PublicAccessBlockConfiguration:
-        BlockPublicAcls: false
-        BlockPublicPolicy: false
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
         IgnorePublicAcls: true
-        RestrictPublicBuckets: false
+        RestrictPublicBuckets: true
       Tags:
         - Key: Project
           Value: UniPlay
       VersioningConfiguration:
         Status: Suspended
-      WebsiteConfiguration:
-        ErrorDocument: index.html
-        IndexDocument: index.html
 
   ApiGatewayRepository:
     Type: AWS::ECR::Repository

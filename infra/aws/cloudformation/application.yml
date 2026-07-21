@@ -43,6 +43,13 @@ Parameters:
     Type: String
     NoEcho: true
     MinLength: 8
+  EnableCloudFront:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+
+Conditions:
+  UseCloudFront: !Equals [!Ref EnableCloudFront, "true"]
 
 Resources:
   AlbSecurityGroup:
@@ -93,6 +100,14 @@ Resources:
       VpcId:
         Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
       SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
           FromPort: 7880
           ToPort: 7881
@@ -361,6 +376,30 @@ Resources:
       VpcId:
         Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
 
+  CaddyHttpTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckPort: "80"
+      HealthCheckProtocol: TCP
+      Port: 80
+      Protocol: TCP
+      TargetType: instance
+      VpcId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
+
+  CaddyHttpsTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckPort: "443"
+      HealthCheckProtocol: TCP
+      Port: 443
+      Protocol: TCP
+      TargetType: instance
+      VpcId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
+
   LiveKitTcpTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     Properties:
@@ -395,6 +434,26 @@ Resources:
       Port: 7880
       Protocol: TCP
 
+  CaddyHttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref CaddyHttpTargetGroup
+      LoadBalancerArn: !Ref LiveKitNetworkLoadBalancer
+      Port: 80
+      Protocol: TCP
+
+  CaddyHttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref CaddyHttpsTargetGroup
+      LoadBalancerArn: !Ref LiveKitNetworkLoadBalancer
+      Port: 443
+      Protocol: TCP
+
   LiveKitTcpListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -416,6 +475,7 @@ Resources:
       Protocol: UDP
 
   MainDistribution:
+    Condition: UseCloudFront
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
@@ -508,6 +568,7 @@ Resources:
           Value: UniPlay
 
   FrontendBucketPolicy:
+    Condition: UseCloudFront
     Type: AWS::S3::BucketPolicy
     Properties:
       Bucket:
@@ -525,6 +586,7 @@ Resources:
                   Fn::ImportValue: !Sub ${FoundationStackName}-FrontendBucketName
 
   LiveKitDistribution:
+    Condition: UseCloudFront
     Type: AWS::CloudFront::Distribution
     Properties:
       DistributionConfig:
@@ -657,7 +719,7 @@ Resources:
               REDIS_HOST=${RedisEndpoint}
               HOSTED_ZONE_ID=${HostedZoneId}
               LIVEKIT_SECRET_ARN=${LiveKitSecretArn}
-              LIVEKIT_PUBLIC_URL=wss://${LiveKitDomain}
+              LIVEKIT_PUBLIC_URL=wss://livekit.${LiveKitPublicIp}.nip.io
               EOF
               aws s3 cp s3://${FrontendBucket}/deploy/user-data/core.sh /tmp/uniplay-core.sh
               chmod +x /tmp/uniplay-core.sh
@@ -666,7 +728,7 @@ Resources:
                 Fn::ImportValue: !Sub ${FoundationStackName}-FrontendBucketName
               HostedZoneId:
                 Fn::ImportValue: !Sub ${FoundationStackName}-InternalHostedZoneId
-              LiveKitDomain: !GetAtt LiveKitDistribution.DomainName
+              LiveKitPublicIp: !GetAtt LiveKitEip.PublicIp
               LiveKitSecretArn:
                 Fn::ImportValue: !Sub ${FoundationStackName}-LiveKitSecretArn
               RedisEndpoint:
@@ -728,17 +790,24 @@ Resources:
               REDIS_HOST=${RedisEndpoint}
               LIVEKIT_SECRET_ARN=${LiveKitSecretArn}
               LIVEKIT_PUBLIC_IP=${LiveKitPublicIp}
+              FRONTEND_BUCKET=${FrontendBucket}
+              APPLICATION_ALB=${ApplicationAlb}
+              ORIGIN_VERIFY_SECRET=${OriginSecret}
+              APP_DOMAIN=uniplay.${LiveKitPublicIp}.nip.io
+              LIVEKIT_DOMAIN=livekit.${LiveKitPublicIp}.nip.io
               EOF
               aws s3 cp s3://${FrontendBucket}/deploy/user-data/media.sh /tmp/uniplay-media.sh
               chmod +x /tmp/uniplay-media.sh
               /tmp/uniplay-media.sh
             - FrontendBucket:
                 Fn::ImportValue: !Sub ${FoundationStackName}-FrontendBucketName
+              ApplicationAlb: !GetAtt ApplicationLoadBalancer.DNSName
               LiveKitPublicIp: !GetAtt LiveKitEip.PublicIp
               LiveKitSecretArn:
                 Fn::ImportValue: !Sub ${FoundationStackName}-LiveKitSecretArn
               RedisEndpoint:
                 Fn::ImportValue: !Sub ${FoundationStackName}-RedisEndpoint
+              OriginSecret: !Ref OriginVerifySecret
       LaunchTemplateName: !Sub ${ProjectName}-${EnvironmentName}-media
 
   MediaAutoScalingGroup:
@@ -753,6 +822,8 @@ Resources:
       MinSize: "1"
       DesiredCapacity: "1"
       TargetGroupARNs:
+        - !Ref CaddyHttpTargetGroup
+        - !Ref CaddyHttpsTargetGroup
         - !Ref LiveKitSignalTargetGroup
         - !Ref LiveKitTcpTargetGroup
         - !Ref LiveKitUdpTargetGroup
@@ -810,11 +881,11 @@ Resources:
 
 Outputs:
   ApplicationUrl:
-    Value: !Sub https://${MainDistribution.DomainName}
+    Value: !Sub https://uniplay.${LiveKitEip}.nip.io
   GrafanaUrl:
-    Value: !Sub https://${MainDistribution.DomainName}/grafana/
+    Value: !Sub https://uniplay.${LiveKitEip}.nip.io/grafana/
   LiveKitUrl:
-    Value: !Sub wss://${LiveKitDistribution.DomainName}
+    Value: !Sub wss://livekit.${LiveKitEip}.nip.io
   ApplicationLoadBalancerDns:
     Value: !GetAtt ApplicationLoadBalancer.DNSName
   LiveKitNetworkLoadBalancerDns:
