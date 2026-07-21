@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public final class GameSession {
 
@@ -30,11 +31,23 @@ public final class GameSession {
     }
 
     public GameSession startRound(RoundId roundId, SecretWord secretWord, RoundMode mode, PlayerId drawerId, Instant startedAt, Instant endsAt) {
+        return startRound(roundId, secretWord, mode, drawerId, Set.of(), startedAt, endsAt);
+    }
+
+    public GameSession startRound(
+            RoundId roundId,
+            SecretWord secretWord,
+            RoundMode mode,
+            PlayerId drawerId,
+            Set<PlayerId> eligibleGuessers,
+            Instant startedAt,
+            Instant endsAt
+    ) {
         if (round != null && round.isActive()) {
             throw new RoundAlreadyActiveException("room " + roomCode.value() + " already has an active round");
         }
 
-        return new GameSession(roomCode, Round.start(roundId, secretWord, mode, drawerId, startedAt, endsAt), scores);
+        return new GameSession(roomCode, Round.start(roundId, secretWord, mode, drawerId, eligibleGuessers, startedAt, endsAt), scores);
     }
 
     public AnswerEvaluation submitAnswer(PlayerId playerId, String answer, int points, Instant answeredAt) {
@@ -48,15 +61,19 @@ public final class GameSession {
         int currentScore = scoreOf(playerId);
 
         if (!round.matches(answer)) {
-            return new AnswerEvaluation(this, false, currentScore, round.id());
+            return new AnswerEvaluation(this, false, false, currentScore, round.id(), false);
+        }
+        if (round.hasGuessed(playerId)) {
+            return new AnswerEvaluation(this, true, false, currentScore, round.id(), false);
         }
 
         Map<PlayerId, Integer> updatedScores = new LinkedHashMap<>(scores);
         int newScore = currentScore + points;
         updatedScores.put(playerId, newScore);
 
-        GameSession updatedSession = new GameSession(roomCode, round.finish(playerId, answeredAt), updatedScores);
-        return new AnswerEvaluation(updatedSession, true, newScore, round.id());
+        Round updatedRound = round.registerCorrectGuess(playerId, answeredAt);
+        GameSession updatedSession = new GameSession(roomCode, updatedRound, updatedScores);
+        return new AnswerEvaluation(updatedSession, true, true, newScore, round.id(), !updatedRound.isActive());
     }
 
     public GameSession expireRound(RoundId roundId, Instant expiredAt) {

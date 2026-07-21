@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 import edu.eci.uniplay.game.application.dto.StartRoundCommand;
@@ -59,8 +60,16 @@ public class StartRoundService implements StartRoundUseCase {
         SecretWord secretWord = wordDeckProvider.nextWord(roomCode, deck, command.customWords());
         RoundId roundId = new RoundId(UUID.randomUUID());
         PlayerId drawerId = command.drawerId() == null ? null : new PlayerId(command.drawerId());
+        Set<PlayerId> eligibleGuessers = command.participantIds() == null
+                ? Set.of()
+                : command.participantIds().stream()
+                        .map(PlayerId::new)
+                        .filter(participantId -> !participantId.equals(drawerId))
+                        .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
-        GameSession updatedSession = session.startRound(roundId, secretWord, mode, drawerId, startedAt, endsAt);
+        GameSession updatedSession = session.startRound(
+                roundId, secretWord, mode, drawerId, eligibleGuessers, startedAt, endsAt
+        );
         gameSessionRepository.save(updatedSession);
         domainEventPublisher.publishRoundStarted(new RoundStartedEvent(
                 roomCode.value(),

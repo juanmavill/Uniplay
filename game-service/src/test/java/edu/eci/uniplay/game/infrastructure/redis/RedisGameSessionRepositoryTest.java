@@ -77,6 +77,9 @@ class RedisGameSessionRepositoryTest {
         assertThat(foundSession.get().round()).get().satisfies(round -> {
             assertThat(round.secretWord()).isEqualTo(new SecretWord("Campus"));
             assertThat(round.guessedBy()).isEqualTo(new PlayerId(UUID.fromString("22222222-2222-2222-2222-222222222222")));
+            assertThat(round.guessedPlayers()).containsExactly(
+                    new PlayerId(UUID.fromString("22222222-2222-2222-2222-222222222222"))
+            );
         });
         assertThat(foundSession.get().scoreOf(new PlayerId(UUID.fromString("22222222-2222-2222-2222-222222222222"))))
                 .isEqualTo(100);

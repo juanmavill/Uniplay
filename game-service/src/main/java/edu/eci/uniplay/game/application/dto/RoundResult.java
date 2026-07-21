@@ -2,6 +2,7 @@ package edu.eci.uniplay.game.application.dto;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.List;
 
 public record RoundResult(
         UUID roundId,
@@ -10,6 +11,8 @@ public record RoundResult(
         String word,
         UUID drawerId,
         UUID guessedBy,
+        List<UUID> guessedPlayerIds,
+        int eligibleGuesserCount,
         Instant startedAt,
         Instant endsAt,
         Instant finishedAt

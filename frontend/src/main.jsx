@@ -98,7 +98,8 @@ function App() {
     ? players.find((item) => item.playerId === activeRound.drawerId) || turnDrawer
     : turnDrawer;
   const isDrawer = Boolean(player?.playerId && roundIsActive && (isAllDrawMode || currentDrawer?.playerId === player.playerId));
-  const canGuess = Boolean(player?.playerId && roundIsActive && !isDrawer);
+  const hasGuessed = Boolean(activeRound?.guessedPlayerIds?.includes(player?.playerId));
+  const canGuess = Boolean(player?.playerId && roundIsActive && !isDrawer && !hasGuessed);
   const visibleWord = activeRound?.word
     ? isDrawer
       ? activeRound.word
@@ -371,7 +372,8 @@ function App() {
         mode,
         deck,
         mode === "ALL_DRAW" ? null : nextDrawer?.playerId,
-        deck === "CUSTOM" ? customWords : null
+        deck === "CUSTOM" ? customWords : null,
+        players.map((item) => item.playerId)
       );
       const nextState = await api.getGameState(currentRoomCode, player?.playerId);
       const displayRound = Math.min(roundsStarted + 1, roundLimit);
@@ -398,14 +400,21 @@ function App() {
       }
       const result = await api.submitAnswer(currentRoomCode, player.playerId, trimmedAnswer);
       setChatMessages((current) => [
-        result.correct
+        result.correct && result.newlyGuessed
           ? {
               id: createClientId(),
               type: "system",
               tone: "success",
               text: `${player.playerName} adivino la palabra`
             }
-          : {
+          : result.correct
+            ? {
+                id: createClientId(),
+                type: "system",
+                tone: "success",
+                text: "Ya habias adivinado esta palabra"
+              }
+            : {
               id: createClientId(),
               type: "guess",
               author: player.playerName,
@@ -1011,7 +1020,7 @@ function createApiClient(baseUrl) {
     createRoom: (maxPlayers) => request(normalizedBaseUrl, "/salas", { method: "POST", body: { maxPlayers } }),
     joinRoom: (code, playerName) => request(normalizedBaseUrl, `/salas/${code}/jugadores`, { method: "POST", body: { playerName } }),
     listPlayers: (code) => request(normalizedBaseUrl, `/salas/${code}/jugadores`),
-    startRound: (code, mode, deck, drawerId, customWords) => request(normalizedBaseUrl, `/games/${code}/rounds`, { method: "POST", body: { mode, deck, drawerId, customWords } }),
+    startRound: (code, mode, deck, drawerId, customWords, participantIds) => request(normalizedBaseUrl, `/games/${code}/rounds`, { method: "POST", body: { mode, deck, drawerId, customWords, participantIds } }),
     submitAnswer: (code, playerId, answer) => request(normalizedBaseUrl, `/games/${code}/answers`, { method: "POST", body: { playerId, answer } }),
     getGameState: (code, viewerPlayerId) => request(normalizedBaseUrl, `/games/${code}${viewerPlayerId ? `?viewerPlayerId=${encodeURIComponent(viewerPlayerId)}` : ""}`),
     expireRound: (code, roundId) => request(normalizedBaseUrl, `/games/${code}/rounds/${roundId}/timeout`, { method: "POST" }),

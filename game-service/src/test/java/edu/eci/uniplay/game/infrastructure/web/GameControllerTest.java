@@ -85,7 +85,8 @@ class GameControllerTest {
                                 {
                                   "mode": "ALL_DRAW",
                                   "deck": "sistemas",
-                                  "drawerId": "22222222-2222-2222-2222-222222222222"
+                                  "drawerId": "22222222-2222-2222-2222-222222222222",
+                                  "participantIds": ["22222222-2222-2222-2222-222222222222"]
                                 }
                                 """))
                 .andExpect(status().isCreated())
@@ -104,6 +105,7 @@ class GameControllerTest {
         assertThat(captor.getValue().mode()).isEqualTo("ALL_DRAW");
         assertThat(captor.getValue().deck()).isEqualTo("sistemas");
         assertThat(captor.getValue().drawerId()).isEqualTo(PLAYER_ID);
+        assertThat(captor.getValue().participantIds()).containsExactly(PLAYER_ID);
     }
 
     @Test
@@ -146,6 +148,7 @@ class GameControllerTest {
                 ROUND_ID,
                 PLAYER_ID,
                 true,
+                true,
                 100,
                 "FINISHED",
                 NOW
@@ -174,7 +177,10 @@ class GameControllerTest {
     void returnsGameState() throws Exception {
         when(getGameStateUseCase.getState("ABC123", PLAYER_ID)).thenReturn(new GameStateResult(
                 "ABC123",
-                new RoundResult(ROUND_ID, "ALL_DRAW", "ACTIVE", "Campus", PLAYER_ID, null, NOW, NOW.plusSeconds(60), null),
+                new RoundResult(
+                        ROUND_ID, "ALL_DRAW", "ACTIVE", "Campus", PLAYER_ID, null,
+                        List.of(), 1, NOW, NOW.plusSeconds(60), null
+                ),
                 List.of(new ScoreResult(PLAYER_ID, 100))
         ));
 

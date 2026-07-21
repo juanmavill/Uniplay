@@ -8,6 +8,7 @@ public record SubmitAnswerResult(
         UUID roundId,
         UUID playerId,
         boolean correct,
+        boolean newlyGuessed,
         int score,
         String roundStatus,
         Instant answeredAt

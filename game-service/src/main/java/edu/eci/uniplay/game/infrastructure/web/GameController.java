@@ -69,7 +69,8 @@ public class GameController {
                 request == null ? null : request.mode(),
                 request == null ? null : request.deck(),
                 request == null ? null : request.drawerId(),
-                request == null ? null : request.customWords()
+                request == null ? null : request.customWords(),
+                request == null ? null : request.participantIds()
         ));
         return ResponseEntity
                 .created(URI.create("/games/" + result.roomCode()))

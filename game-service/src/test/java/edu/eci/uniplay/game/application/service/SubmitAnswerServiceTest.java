@@ -6,6 +6,7 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import edu.eci.uniplay.game.application.dto.SubmitAnswerCommand;
@@ -32,6 +33,7 @@ class SubmitAnswerServiceTest {
     private static final Instant ANSWERED_AT = Instant.parse("2026-07-07T12:00:07Z");
     private static final Instant ENDS_AT = Instant.parse("2026-07-07T12:01:00Z");
     private static final UUID PLAYER_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    private static final UUID OTHER_PLAYER_ID = UUID.fromString("33333333-3333-3333-3333-333333333333");
 
     @Test
     void correctAnswerSavesScoreAndPublishesEvent() {
@@ -48,19 +50,16 @@ class SubmitAnswerServiceTest {
         SubmitAnswerResult result = service.submitAnswer(new SubmitAnswerCommand("ABC123", PLAYER_ID, "campus"));
 
         assertThat(result.correct()).isTrue();
+        assertThat(result.newlyGuessed()).isTrue();
         assertThat(result.score()).isEqualTo(100);
-        assertThat(result.roundStatus()).isEqualTo("FINISHED");
+        assertThat(result.roundStatus()).isEqualTo("ACTIVE");
         assertThat(repository.savedSession.scoreOf(new PlayerId(PLAYER_ID))).isEqualTo(100);
         assertThat(eventPublisher.roundGuessedEvents).singleElement().satisfies(event -> {
             assertThat(event.playerId()).isEqualTo(PLAYER_ID);
             assertThat(event.score()).isEqualTo(100);
             assertThat(event.occurredAt()).isEqualTo(ANSWERED_AT);
         });
-        assertThat(eventPublisher.roundFinishedEvents).singleElement().satisfies(event -> {
-            assertThat(event.reason()).isEqualTo("GUESSED");
-            assertThat(event.status()).isEqualTo("FINISHED");
-            assertThat(event.finishedAt()).isEqualTo(ANSWERED_AT);
-        });
+        assertThat(eventPublisher.roundFinishedEvents).isEmpty();
     }
 
     @Test
@@ -90,6 +89,8 @@ class SubmitAnswerServiceTest {
                         new RoundId(UUID.fromString("11111111-1111-1111-1111-111111111111")),
                         new SecretWord("Campus"),
                         RoundMode.CLASSIC,
+                        null,
+                        Set.of(new PlayerId(PLAYER_ID), new PlayerId(OTHER_PLAYER_ID)),
                         STARTED_AT,
                         ENDS_AT
                 );

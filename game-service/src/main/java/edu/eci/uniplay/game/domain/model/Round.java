@@ -3,6 +3,7 @@ package edu.eci.uniplay.game.domain.model;
 import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
 public record Round(
         RoundId id,
@@ -14,8 +15,29 @@ public record Round(
         Instant endsAt,
         PlayerId guessedBy,
         Instant finishedAt,
+        Set<PlayerId> eligibleGuessers,
+        Set<PlayerId> guessedPlayers,
+        boolean drawerBonusAwarded,
         Map<PlayerId, PlayerId> votes
 ) {
+
+    public Round(
+            RoundId id,
+            SecretWord secretWord,
+            RoundMode mode,
+            PlayerId drawerId,
+            RoundStatus status,
+            Instant startedAt,
+            Instant endsAt,
+            PlayerId guessedBy,
+            Instant finishedAt,
+            Map<PlayerId, PlayerId> votes
+    ) {
+        this(
+                id, secretWord, mode, drawerId, status, startedAt, endsAt, guessedBy, finishedAt,
+                Set.of(), guessedBy == null ? Set.of() : Set.of(guessedBy), false, votes
+        );
+    }
 
     public Round {
         if (id == null) {
@@ -45,6 +67,8 @@ public record Round(
         if (status == RoundStatus.EXPIRED && finishedAt == null) {
             throw new IllegalArgumentException("expired round requires finish time");
         }
+        eligibleGuessers = eligibleGuessers == null ? Set.of() : Set.copyOf(eligibleGuessers);
+        guessedPlayers = guessedPlayers == null ? Set.of() : Set.copyOf(guessedPlayers);
         if (votes == null) {
             votes = Map.of();
         } else {
@@ -57,7 +81,22 @@ public record Round(
     }
 
     public static Round start(RoundId id, SecretWord secretWord, RoundMode mode, PlayerId drawerId, Instant startedAt, Instant endsAt) {
-        return new Round(id, secretWord, mode, drawerId, RoundStatus.ACTIVE, startedAt, endsAt, null, null, Map.of());
+        return start(id, secretWord, mode, drawerId, Set.of(), startedAt, endsAt);
+    }
+
+    public static Round start(
+            RoundId id,
+            SecretWord secretWord,
+            RoundMode mode,
+            PlayerId drawerId,
+            Set<PlayerId> eligibleGuessers,
+            Instant startedAt,
+            Instant endsAt
+    ) {
+        return new Round(
+                id, secretWord, mode, drawerId, RoundStatus.ACTIVE, startedAt, endsAt, null, null,
+                eligibleGuessers, Set.of(), false, Map.of()
+        );
     }
 
     public boolean isActive() {
@@ -76,15 +115,31 @@ public record Round(
         return drawerId != null && drawerId.equals(playerId);
     }
 
-    public Round finish(PlayerId playerId, Instant finishedAt) {
+    public boolean hasGuessed(PlayerId playerId) {
+        return guessedPlayers.contains(playerId);
+    }
+
+    public Round registerCorrectGuess(PlayerId playerId, Instant answeredAt) {
         if (!isActive()) {
             throw new RoundNotActiveException("round " + id.value() + " is not active");
         }
-        if (isExpiredAt(finishedAt)) {
+        if (isExpiredAt(answeredAt)) {
             throw new RoundExpiredException("round " + id.value() + " expired at " + endsAt);
         }
+        if (hasGuessed(playerId)) {
+            return this;
+        }
 
-        return new Round(id, secretWord, mode, drawerId, RoundStatus.FINISHED, startedAt, endsAt, playerId, finishedAt, votes);
+        Set<PlayerId> updatedGuesses = new java.util.LinkedHashSet<>(guessedPlayers);
+        updatedGuesses.add(playerId);
+        boolean allGuessed = !eligibleGuessers.isEmpty() && updatedGuesses.containsAll(eligibleGuessers);
+        return new Round(
+                id, secretWord, mode, drawerId,
+                allGuessed ? RoundStatus.FINISHED : RoundStatus.ACTIVE,
+                startedAt, endsAt, guessedBy == null ? playerId : guessedBy,
+                allGuessed ? answeredAt : null,
+                eligibleGuessers, updatedGuesses, drawerBonusAwarded, votes
+        );
     }
 
     public Round expire(Instant expiredAt) {
@@ -95,7 +150,10 @@ public record Round(
             throw new RoundNotExpiredException("round " + id.value() + " has not expired yet");
         }
 
-        return new Round(id, secretWord, mode, drawerId, RoundStatus.EXPIRED, startedAt, endsAt, null, expiredAt, votes);
+        return new Round(
+                id, secretWord, mode, drawerId, RoundStatus.EXPIRED, startedAt, endsAt, guessedBy, expiredAt,
+                eligibleGuessers, guessedPlayers, drawerBonusAwarded, votes
+        );
     }
 
     public Round castVote(PlayerId voterId, PlayerId candidateId) {
@@ -114,7 +172,10 @@ public record Round(
 
         Map<PlayerId, PlayerId> updatedVotes = new LinkedHashMap<>(votes);
         updatedVotes.put(voterId, candidateId);
-        return new Round(id, secretWord, mode, drawerId, status, startedAt, endsAt, guessedBy, finishedAt, updatedVotes);
+        return new Round(
+                id, secretWord, mode, drawerId, status, startedAt, endsAt, guessedBy, finishedAt,
+                eligibleGuessers, guessedPlayers, drawerBonusAwarded, updatedVotes
+        );
     }
 
     public Map<PlayerId, Integer> voteTallies() {

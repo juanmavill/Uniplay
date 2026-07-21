@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -105,6 +106,9 @@ public class RedisGameSessionRepository implements GameSessionRepository {
             String endsAt,
             String guessedBy,
             String finishedAt,
+            List<String> eligibleGuessers,
+            List<String> guessedPlayers,
+            boolean drawerBonusAwarded,
             List<VoteDocument> votes
     ) {
 
@@ -119,6 +123,9 @@ public class RedisGameSessionRepository implements GameSessionRepository {
                     round.endsAt().toString(),
                     round.guessedBy() == null ? null : round.guessedBy().value().toString(),
                     round.finishedAt() == null ? null : round.finishedAt().toString(),
+                    round.eligibleGuessers().stream().map(playerId -> playerId.value().toString()).sorted().toList(),
+                    round.guessedPlayers().stream().map(playerId -> playerId.value().toString()).sorted().toList(),
+                    round.drawerBonusAwarded(),
                     round.votes().entrySet().stream()
                             .map(entry -> VoteDocument.from(entry.getKey(), entry.getValue()))
                             .toList()
@@ -130,6 +137,11 @@ public class RedisGameSessionRepository implements GameSessionRepository {
             if (votes != null) {
                 votes.forEach(vote -> restoredVotes.put(vote.toVoterId(), vote.toCandidateId()));
             }
+            PlayerId restoredGuessedBy = guessedBy == null ? null : new PlayerId(UUID.fromString(guessedBy));
+            Set<PlayerId> restoredEligibleGuessers = restorePlayerIds(eligibleGuessers);
+            Set<PlayerId> restoredGuessedPlayers = guessedPlayers == null
+                    ? restoredGuessedBy == null ? Set.of() : Set.of(restoredGuessedBy)
+                    : restorePlayerIds(guessedPlayers);
 
             return new Round(
                     new RoundId(UUID.fromString(id)),
@@ -139,10 +151,23 @@ public class RedisGameSessionRepository implements GameSessionRepository {
                     RoundStatus.valueOf(status),
                     Instant.parse(startedAt),
                     Instant.parse(endsAt),
-                    guessedBy == null ? null : new PlayerId(UUID.fromString(guessedBy)),
+                    restoredGuessedBy,
                     finishedAt == null ? null : Instant.parse(finishedAt),
+                    restoredEligibleGuessers,
+                    restoredGuessedPlayers,
+                    drawerBonusAwarded,
                     restoredVotes
             );
+        }
+
+        private Set<PlayerId> restorePlayerIds(List<String> playerIds) {
+            if (playerIds == null) {
+                return Set.of();
+            }
+            return playerIds.stream()
+                    .map(UUID::fromString)
+                    .map(PlayerId::new)
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
         }
     }
 

@@ -45,6 +45,8 @@ final class GameResultMapper {
                 canSeeWord(round, viewerPlayerId) ? round.secretWord().value() : null,
                 round.drawerId() == null ? null : round.drawerId().value(),
                 round.guessedBy() == null ? null : round.guessedBy().value(),
+                round.guessedPlayers().stream().map(PlayerId::value).sorted().toList(),
+                round.eligibleGuessers().size(),
                 round.startedAt(),
                 round.endsAt(),
                 round.finishedAt()

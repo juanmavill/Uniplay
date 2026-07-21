@@ -18,7 +18,7 @@ import edu.eci.uniplay.game.domain.model.RoundStatus;
 
 public class SubmitAnswerService implements SubmitAnswerUseCase {
 
-    private static final String GUESSED_REASON = "GUESSED";
+    private static final String ALL_GUESSED_REASON = "ALL_GUESSED";
 
     private final GameSessionRepository gameSessionRepository;
     private final DomainEventPublisher domainEventPublisher;
@@ -51,7 +51,7 @@ public class SubmitAnswerService implements SubmitAnswerUseCase {
                 answeredAt
         );
 
-        if (evaluation.correct()) {
+        if (evaluation.newlyGuessed()) {
             gameSessionRepository.save(evaluation.session());
             domainEventPublisher.publishRoundGuessed(new RoundGuessedEvent(
                     roomCode.value(),
@@ -60,23 +60,28 @@ public class SubmitAnswerService implements SubmitAnswerUseCase {
                     evaluation.score(),
                     answeredAt
             ));
-            domainEventPublisher.publishRoundFinished(new RoundFinishedEvent(
-                    roomCode.value(),
-                    evaluation.roundId().value(),
-                    RoundStatus.FINISHED.name(),
-                    GUESSED_REASON,
-                    answeredAt,
-                    answeredAt
-            ));
+            if (evaluation.roundFinished()) {
+                domainEventPublisher.publishRoundFinished(new RoundFinishedEvent(
+                        roomCode.value(),
+                        evaluation.roundId().value(),
+                        RoundStatus.FINISHED.name(),
+                        ALL_GUESSED_REASON,
+                        answeredAt,
+                        answeredAt
+                ));
+            }
         }
+
+        String roundStatus = evaluation.session().round().orElseThrow().status().name();
 
         return new SubmitAnswerResult(
                 roomCode.value(),
                 evaluation.roundId().value(),
                 playerId.value(),
                 evaluation.correct(),
+                evaluation.newlyGuessed(),
                 evaluation.score(),
-                evaluation.correct() ? RoundStatus.FINISHED.name() : RoundStatus.ACTIVE.name(),
+                roundStatus,
                 answeredAt
         );
     }

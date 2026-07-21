@@ -45,7 +45,11 @@ class StartRoundServiceTest {
                 "ALL_DRAW",
                 "sistemas",
                 UUID.fromString("22222222-2222-2222-2222-222222222222"),
-                null
+                null,
+                List.of(
+                        UUID.fromString("22222222-2222-2222-2222-222222222222"),
+                        UUID.fromString("33333333-3333-3333-3333-333333333333")
+                )
         ));
 
         assertThat(result.roomCode()).isEqualTo("ABC123");
@@ -57,6 +61,12 @@ class StartRoundServiceTest {
         assertThat(result.startedAt()).isEqualTo(NOW);
         assertThat(result.endsAt()).isEqualTo(NOW.plusSeconds(45));
         assertThat(repository.savedSession).isNotNull();
+        assertThat(repository.savedSession.round()).get().satisfies(round ->
+                assertThat(round.eligibleGuessers())
+                        .containsExactly(new edu.eci.uniplay.game.domain.model.PlayerId(
+                                UUID.fromString("33333333-3333-3333-3333-333333333333")
+                        ))
+        );
         assertThat(eventPublisher.roundStartedEvents).singleElement().satisfies(event -> {
             assertThat(event.roomCode()).isEqualTo("ABC123");
             assertThat(event.roundId()).isEqualTo(result.roundId());

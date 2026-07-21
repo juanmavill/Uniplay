@@ -2,6 +2,7 @@ package edu.eci.uniplay.game.domain.model;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 
@@ -44,19 +45,52 @@ class GameSessionTest {
     }
 
     @Test
-    void correctAnswerAddsScoreAndFinishesRound() {
+    void multiplePlayersCanScoreBeforeRoundFinishes() {
         GameSession session = GameSession.newFor(ROOM_CODE)
-                .startRound(ROUND_ID, new SecretWord("Biblioteca"), RoundMode.CLASSIC, STARTED_AT, ENDS_AT);
+                .startRound(
+                        ROUND_ID, new SecretWord("Biblioteca"), RoundMode.CLASSIC, null,
+                        Set.of(PLAYER_ID, OTHER_PLAYER_ID), STARTED_AT, ENDS_AT
+                );
 
-        AnswerEvaluation evaluation = session.submitAnswer(PLAYER_ID, " biblioteca ", 100, ANSWERED_AT);
+        AnswerEvaluation firstEvaluation = session.submitAnswer(PLAYER_ID, " biblioteca ", 100, ANSWERED_AT);
 
-        assertThat(evaluation.correct()).isTrue();
-        assertThat(evaluation.score()).isEqualTo(100);
-        assertThat(evaluation.session().round()).get().satisfies(round -> {
+        assertThat(firstEvaluation.correct()).isTrue();
+        assertThat(firstEvaluation.newlyGuessed()).isTrue();
+        assertThat(firstEvaluation.score()).isEqualTo(100);
+        assertThat(firstEvaluation.session().round()).get().satisfies(round -> {
+            assertThat(round.status()).isEqualTo(RoundStatus.ACTIVE);
+            assertThat(round.guessedPlayers()).containsExactly(PLAYER_ID);
+        });
+
+        AnswerEvaluation secondEvaluation = firstEvaluation.session()
+                .submitAnswer(OTHER_PLAYER_ID, "biblioteca", 100, ANSWERED_AT.plusSeconds(2));
+
+        assertThat(secondEvaluation.score()).isEqualTo(100);
+        assertThat(secondEvaluation.roundFinished()).isTrue();
+        assertThat(secondEvaluation.session().round()).get().satisfies(round -> {
             assertThat(round.status()).isEqualTo(RoundStatus.FINISHED);
             assertThat(round.guessedBy()).isEqualTo(PLAYER_ID);
-            assertThat(round.finishedAt()).isEqualTo(ANSWERED_AT);
+            assertThat(round.guessedPlayers()).containsExactlyInAnyOrder(PLAYER_ID, OTHER_PLAYER_ID);
+            assertThat(round.finishedAt()).isEqualTo(ANSWERED_AT.plusSeconds(2));
         });
+    }
+
+    @Test
+    void duplicateCorrectAnswerDoesNotScoreTwice() {
+        GameSession session = GameSession.newFor(ROOM_CODE)
+                .startRound(
+                        ROUND_ID, new SecretWord("Biblioteca"), RoundMode.CLASSIC, null,
+                        Set.of(PLAYER_ID, OTHER_PLAYER_ID), STARTED_AT, ENDS_AT
+                );
+        AnswerEvaluation firstEvaluation = session.submitAnswer(PLAYER_ID, "biblioteca", 100, ANSWERED_AT);
+
+        AnswerEvaluation duplicateEvaluation = firstEvaluation.session()
+                .submitAnswer(PLAYER_ID, "biblioteca", 100, ANSWERED_AT.plusSeconds(1));
+
+        assertThat(duplicateEvaluation.correct()).isTrue();
+        assertThat(duplicateEvaluation.newlyGuessed()).isFalse();
+        assertThat(duplicateEvaluation.score()).isEqualTo(100);
+        assertThat(duplicateEvaluation.session()).isSameAs(firstEvaluation.session());
     }
 
     @Test
