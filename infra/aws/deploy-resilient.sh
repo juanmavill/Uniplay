@@ -7,6 +7,7 @@ FOUNDATION_STACK="${FOUNDATION_STACK:-uniplay-foundation}"
 APPLICATION_STACK="${APPLICATION_STACK:-uniplay-application}"
 INSTANCE_PROFILE="${INSTANCE_PROFILE:-LabInstanceProfile}"
 BUILDER_INSTANCE_TYPE="${BUILDER_INSTANCE_TYPE:-t3.large}"
+ENABLE_CLOUDFRONT="${ENABLE_CLOUDFRONT:-false}"
 IMAGE_TAG="${IMAGE_TAG:-$(date -u +%Y%m%d%H%M%S)}"
 ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
 REGISTRY_HOST="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
@@ -180,15 +181,18 @@ aws cloudformation deploy \
     ImageTag="$IMAGE_TAG" \
     OriginVerifySecret="$ORIGIN_SECRET" \
     GrafanaAdminPassword="$GRAFANA_PASSWORD" \
+    EnableCloudFront="$ENABLE_CLOUDFRONT" \
   --no-fail-on-empty-changeset
 
 APPLICATION_URL="$(stack_output "$APPLICATION_STACK" ApplicationUrl)"
 GRAFANA_URL="$(stack_output "$APPLICATION_STACK" GrafanaUrl)"
 LIVEKIT_URL="$(stack_output "$APPLICATION_STACK" LiveKitUrl)"
 
-aws cloudfront create-invalidation \
-  --distribution-id "$(aws cloudformation describe-stack-resource --region "$REGION" --stack-name "$APPLICATION_STACK" --logical-resource-id MainDistribution --query StackResourceDetail.PhysicalResourceId --output text)" \
-  --paths '/*' >/dev/null
+if [ "$ENABLE_CLOUDFRONT" = true ]; then
+  aws cloudfront create-invalidation \
+    --distribution-id "$(aws cloudformation describe-stack-resource --region "$REGION" --stack-name "$APPLICATION_STACK" --logical-resource-id MainDistribution --query StackResourceDetail.PhysicalResourceId --output text)" \
+    --paths '/*' >/dev/null
+fi
 
 cat >"$HOME/uniplay-deployment.txt" <<EOF
 IMAGE_TAG=$IMAGE_TAG
