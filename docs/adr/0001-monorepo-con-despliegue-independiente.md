@@ -4,11 +4,15 @@
 
 Aceptada.
 
+La distribucion fisica inicial por servicio fue reemplazada por la agrupacion
+descrita en el ADR 0002. La decision de mantener builds e imagenes
+independientes por servicio sigue vigente.
+
 ## Contexto
 
 UniPlay esta compuesto por seis microservicios, un frontend, Redis como bus de
-eventos y LiveKit como SFU para voz. La arquitectura de ejecucion exige que
-cada servicio viva en una instancia independiente y se comunique solo por red.
+eventos y LiveKit como SFU para voz. Cada servicio necesita un artefacto de
+despliegue independiente y se comunica con los demas solo por red.
 
 El proyecto, sin embargo, sera desarrollado por una sola persona en un contexto
 academico. Mantener multiples repositorios agregaria sobrecarga operacional sin

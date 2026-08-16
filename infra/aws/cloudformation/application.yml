@@ -1,0 +1,917 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: UniPlay recoverable application deployment on AWS.
+
+Parameters:
+  FoundationStackName:
+    Type: String
+    Default: uniplay-foundation
+  ProjectName:
+    Type: String
+    Default: uniplay
+  EnvironmentName:
+    Type: String
+    Default: prod
+  InstanceProfileName:
+    Type: String
+    Default: LabInstanceProfile
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64
+  EdgeInstanceType:
+    Type: String
+    Default: t3.medium
+  CoreInstanceType:
+    Type: String
+    Default: t3.medium
+  MediaInstanceType:
+    Type: String
+    Default: t3.small
+  ObservabilityInstanceType:
+    Type: String
+    Default: t3.small
+  ImageTag:
+    Type: String
+    Default: latest
+  OriginVerifySecret:
+    Type: String
+    NoEcho: true
+    MinLength: 24
+  GrafanaAdminUser:
+    Type: String
+    Default: admin
+  GrafanaAdminPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+  EnableCloudFront:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+
+Conditions:
+  UseCloudFront: !Equals [!Ref EnableCloudFront, "true"]
+
+Resources:
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Public HTTP entry point used by CloudFront
+      VpcId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${EnvironmentName}-alb
+        - Key: Project
+          Value: UniPlay
+
+  EdgeSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: UniPlay Edge nodes
+      VpcId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${EnvironmentName}-edge
+        - Key: Project
+          Value: UniPlay
+
+  CoreSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: UniPlay Core nodes
+      VpcId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${EnvironmentName}-core
+        - Key: Project
+          Value: UniPlay
+
+  MediaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: UniPlay LiveKit media traffic
+      VpcId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 7880
+          ToPort: 7881
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: udp
+          FromPort: 7882
+          ToPort: 7882
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${EnvironmentName}-media
+        - Key: Project
+          Value: UniPlay
+
+  ObservabilitySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: UniPlay Prometheus and Grafana
+      VpcId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${EnvironmentName}-observability
+        - Key: Project
+          Value: UniPlay
+
+  EdgeIngressFromAlb:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref EdgeSecurityGroup
+      IpProtocol: tcp
+      FromPort: 8080
+      ToPort: 8080
+      SourceSecurityGroupId: !Ref AlbSecurityGroup
+
+  EdgeIngressFromObservability:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref EdgeSecurityGroup
+      IpProtocol: tcp
+      FromPort: 8080
+      ToPort: 8083
+      SourceSecurityGroupId: !Ref ObservabilitySecurityGroup
+
+  CoreIngressFromEdge:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref CoreSecurityGroup
+      IpProtocol: tcp
+      FromPort: 8081
+      ToPort: 8085
+      SourceSecurityGroupId: !Ref EdgeSecurityGroup
+
+  CoreIngressFromObservability:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref CoreSecurityGroup
+      IpProtocol: tcp
+      FromPort: 8081
+      ToPort: 8085
+      SourceSecurityGroupId: !Ref ObservabilitySecurityGroup
+
+  ObservabilityIngressFromAlb:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref ObservabilitySecurityGroup
+      IpProtocol: tcp
+      FromPort: 3000
+      ToPort: 3000
+      SourceSecurityGroupId: !Ref AlbSecurityGroup
+
+  RedisIngressFromEdge:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-RedisSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 6379
+      ToPort: 6379
+      SourceSecurityGroupId: !Ref EdgeSecurityGroup
+
+  RedisIngressFromCore:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-RedisSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 6379
+      ToPort: 6379
+      SourceSecurityGroupId: !Ref CoreSecurityGroup
+
+  RedisIngressFromMedia:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-RedisSecurityGroupId
+      IpProtocol: tcp
+      FromPort: 6379
+      ToPort: 6379
+      SourceSecurityGroupId: !Ref MediaSecurityGroup
+
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref AlbSecurityGroup
+      Subnets:
+        - Fn::ImportValue: !Sub ${FoundationStackName}-PublicSubnetAId
+        - Fn::ImportValue: !Sub ${FoundationStackName}-PublicSubnetBId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${EnvironmentName}-alb
+        - Key: Project
+          Value: UniPlay
+      Type: application
+
+  EdgeTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckIntervalSeconds: 15
+      HealthCheckPath: /actuator/health
+      HealthCheckPort: "8080"
+      HealthCheckProtocol: HTTP
+      HealthyThresholdCount: 2
+      Port: 8080
+      Protocol: HTTP
+      TargetType: instance
+      UnhealthyThresholdCount: 3
+      VpcId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
+      Tags:
+        - Key: Project
+          Value: UniPlay
+
+  ObservabilityTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckPath: /api/health
+      HealthCheckPort: "3000"
+      HealthCheckProtocol: HTTP
+      Port: 3000
+      Protocol: HTTP
+      Targets:
+        - Id: !Ref ObservabilityInstance
+          Port: 3000
+      TargetType: instance
+      VpcId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
+      Tags:
+        - Key: Project
+          Value: UniPlay
+
+  AlbListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: fixed-response
+          FixedResponseConfig:
+            ContentType: application/json
+            MessageBody: '{"error":"forbidden"}'
+            StatusCode: "403"
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+
+  ApiListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref EdgeTargetGroup
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: X-UniPlay-Origin
+            Values:
+              - !Ref OriginVerifySecret
+        - Field: path-pattern
+          PathPatternConfig:
+            Values:
+              - /rooms*
+              - /games*
+              - /metrics*
+              - /voice*
+      ListenerArn: !Ref AlbListener
+      Priority: 10
+
+  RoomsApiListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref EdgeTargetGroup
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: X-UniPlay-Origin
+            Values:
+              - !Ref OriginVerifySecret
+        - Field: path-pattern
+          PathPatternConfig:
+            Values:
+              - /salas*
+      ListenerArn: !Ref AlbListener
+      Priority: 11
+
+  RealtimeListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref EdgeTargetGroup
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: X-UniPlay-Origin
+            Values:
+              - !Ref OriginVerifySecret
+        - Field: path-pattern
+          PathPatternConfig:
+            Values:
+              - /ws*
+              - /actuator*
+      ListenerArn: !Ref AlbListener
+      Priority: 20
+
+  GrafanaListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    Properties:
+      Actions:
+        - Type: forward
+          TargetGroupArn: !Ref ObservabilityTargetGroup
+      Conditions:
+        - Field: http-header
+          HttpHeaderConfig:
+            HttpHeaderName: X-UniPlay-Origin
+            Values:
+              - !Ref OriginVerifySecret
+        - Field: path-pattern
+          PathPatternConfig:
+            Values:
+              - /grafana*
+      ListenerArn: !Ref AlbListener
+      Priority: 30
+
+  LiveKitEip:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${EnvironmentName}-livekit
+        - Key: Project
+          Value: UniPlay
+
+  LiveKitNetworkLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      IpAddressType: ipv4
+      Scheme: internet-facing
+      SubnetMappings:
+        - AllocationId: !GetAtt LiveKitEip.AllocationId
+          SubnetId:
+            Fn::ImportValue: !Sub ${FoundationStackName}-PublicSubnetAId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${EnvironmentName}-livekit-nlb
+        - Key: Project
+          Value: UniPlay
+      Type: network
+
+  LiveKitSignalTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckPort: "7880"
+      HealthCheckProtocol: TCP
+      Port: 7880
+      Protocol: TCP
+      TargetType: instance
+      VpcId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
+
+  CaddyHttpTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckPort: "80"
+      HealthCheckProtocol: TCP
+      Port: 80
+      Protocol: TCP
+      TargetType: instance
+      VpcId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
+
+  CaddyHttpsTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckPort: "443"
+      HealthCheckProtocol: TCP
+      Port: 443
+      Protocol: TCP
+      TargetType: instance
+      VpcId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
+
+  LiveKitTcpTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckPort: "7880"
+      HealthCheckProtocol: TCP
+      Port: 7881
+      Protocol: TCP
+      TargetType: instance
+      VpcId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
+
+  LiveKitUdpTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckEnabled: true
+      HealthCheckPort: "7880"
+      HealthCheckProtocol: TCP
+      Port: 7882
+      Protocol: UDP
+      TargetType: instance
+      VpcId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-VpcId
+
+  LiveKitSignalListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref LiveKitSignalTargetGroup
+      LoadBalancerArn: !Ref LiveKitNetworkLoadBalancer
+      Port: 7880
+      Protocol: TCP
+
+  CaddyHttpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref CaddyHttpTargetGroup
+      LoadBalancerArn: !Ref LiveKitNetworkLoadBalancer
+      Port: 80
+      Protocol: TCP
+
+  CaddyHttpsListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref CaddyHttpsTargetGroup
+      LoadBalancerArn: !Ref LiveKitNetworkLoadBalancer
+      Port: 443
+      Protocol: TCP
+
+  LiveKitTcpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref LiveKitTcpTargetGroup
+      LoadBalancerArn: !Ref LiveKitNetworkLoadBalancer
+      Port: 7881
+      Protocol: TCP
+
+  LiveKitUdpListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref LiveKitUdpTargetGroup
+      LoadBalancerArn: !Ref LiveKitNetworkLoadBalancer
+      Port: 7882
+      Protocol: UDP
+
+  MainDistribution:
+    Condition: UseCloudFront
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: UniPlay frontend, API and WebSocket entry point
+        CustomErrorResponses:
+          - ErrorCachingMinTTL: 0
+            ErrorCode: 403
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+          - ErrorCachingMinTTL: 0
+            ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        DefaultCacheBehavior:
+          AllowedMethods: [GET, HEAD, OPTIONS]
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          Compress: true
+          TargetOriginId: frontend-s3
+          ViewerProtocolPolicy: redirect-to-https
+        DefaultRootObject: index.html
+        Enabled: true
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        CacheBehaviors:
+          - PathPattern: /salas*
+            TargetOriginId: application-alb
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /rooms*
+            TargetOriginId: application-alb
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /games*
+            TargetOriginId: application-alb
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /metrics*
+            TargetOriginId: application-alb
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /voice*
+            TargetOriginId: application-alb
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /ws*
+            TargetOriginId: application-alb
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /actuator*
+            TargetOriginId: application-alb
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [GET, HEAD, OPTIONS]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          - PathPattern: /grafana*
+            TargetOriginId: application-alb
+            ViewerProtocolPolicy: https-only
+            AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+        Origins:
+          - DomainName: !Sub
+              - ${Bucket}.s3-website-${AWS::Region}.amazonaws.com
+              - Bucket:
+                  Fn::ImportValue: !Sub ${FoundationStackName}-FrontendBucketName
+            Id: frontend-s3
+            CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+          - CustomOriginConfig:
+              HTTPPort: 80
+              OriginProtocolPolicy: http-only
+              OriginReadTimeout: 60
+            DomainName: !GetAtt ApplicationLoadBalancer.DNSName
+            Id: application-alb
+            OriginCustomHeaders:
+              - HeaderName: X-UniPlay-Origin
+                HeaderValue: !Ref OriginVerifySecret
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+      Tags:
+        - Key: Project
+          Value: UniPlay
+
+  FrontendBucketPolicy:
+    Condition: UseCloudFront
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Fn::ImportValue: !Sub ${FoundationStackName}-FrontendBucketName
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowPublicStaticRead
+            Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub
+              - arn:${AWS::Partition}:s3:::${Bucket}/*
+              - Bucket:
+                  Fn::ImportValue: !Sub ${FoundationStackName}-FrontendBucketName
+
+  LiveKitDistribution:
+    Condition: UseCloudFront
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Comment: Secure LiveKit signaling endpoint
+        DefaultCacheBehavior:
+          AllowedMethods: [DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT]
+          CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+          OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
+          TargetOriginId: livekit-nlb
+          ViewerProtocolPolicy: https-only
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Origins:
+          - CustomOriginConfig:
+              HTTPPort: 7880
+              OriginProtocolPolicy: http-only
+              OriginReadTimeout: 60
+            DomainName: !GetAtt LiveKitNetworkLoadBalancer.DNSName
+            Id: livekit-nlb
+        PriceClass: PriceClass_100
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+      Tags:
+        - Key: Project
+          Value: UniPlay
+
+  EdgeLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              DeleteOnTermination: true
+              Encrypted: true
+              VolumeSize: 25
+              VolumeType: gp3
+        IamInstanceProfile:
+          Name: !Ref InstanceProfileName
+        ImageId: !Ref AmiId
+        InstanceType: !Ref EdgeInstanceType
+        MetadataOptions:
+          HttpEndpoint: enabled
+          HttpTokens: required
+        SecurityGroupIds:
+          - !Ref EdgeSecurityGroup
+        UserData:
+          Fn::Base64: !Sub
+            - |
+              #!/bin/bash
+              set -euo pipefail
+              mkdir -p /etc/uniplay
+              cat >/etc/uniplay/bootstrap.env <<'EOF'
+              AWS_REGION=${AWS::Region}
+              REGISTRY_HOST=${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com
+              REGISTRY_PREFIX=${RegistryPrefix}
+              IMAGE_TAG=${ImageTag}
+              REDIS_HOST=${RedisEndpoint}
+              HOSTED_ZONE_ID=${HostedZoneId}
+              EOF
+              aws s3 cp s3://${FrontendBucket}/deploy/user-data/edge.sh /tmp/uniplay-edge.sh
+              chmod +x /tmp/uniplay-edge.sh
+              /tmp/uniplay-edge.sh
+            - FrontendBucket:
+                Fn::ImportValue: !Sub ${FoundationStackName}-FrontendBucketName
+              HostedZoneId:
+                Fn::ImportValue: !Sub ${FoundationStackName}-InternalHostedZoneId
+              RedisEndpoint:
+                Fn::ImportValue: !Sub ${FoundationStackName}-RedisEndpoint
+              RegistryPrefix:
+                Fn::ImportValue: !Sub ${FoundationStackName}-RegistryPrefix
+      LaunchTemplateName: !Sub ${ProjectName}-${EnvironmentName}-edge
+
+  EdgeAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      HealthCheckGracePeriod: 600
+      HealthCheckType: ELB
+      LaunchTemplate:
+        LaunchTemplateId: !Ref EdgeLaunchTemplate
+        Version: !GetAtt EdgeLaunchTemplate.LatestVersionNumber
+      MaxSize: "1"
+      MinSize: "1"
+      DesiredCapacity: "1"
+      TargetGroupARNs:
+        - !Ref EdgeTargetGroup
+      VPCZoneIdentifier:
+        - Fn::ImportValue: !Sub ${FoundationStackName}-PrivateSubnetAId
+        - Fn::ImportValue: !Sub ${FoundationStackName}-PrivateSubnetBId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${EnvironmentName}-edge
+          PropagateAtLaunch: true
+        - Key: Project
+          Value: UniPlay
+          PropagateAtLaunch: true
+
+  CoreLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              DeleteOnTermination: true
+              Encrypted: true
+              VolumeSize: 30
+              VolumeType: gp3
+        IamInstanceProfile:
+          Name: !Ref InstanceProfileName
+        ImageId: !Ref AmiId
+        InstanceType: !Ref CoreInstanceType
+        MetadataOptions:
+          HttpEndpoint: enabled
+          HttpTokens: required
+        SecurityGroupIds:
+          - !Ref CoreSecurityGroup
+        UserData:
+          Fn::Base64: !Sub
+            - |
+              #!/bin/bash
+              set -euo pipefail
+              mkdir -p /etc/uniplay
+              cat >/etc/uniplay/bootstrap.env <<'EOF'
+              AWS_REGION=${AWS::Region}
+              REGISTRY_HOST=${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com
+              REGISTRY_PREFIX=${RegistryPrefix}
+              IMAGE_TAG=${ImageTag}
+              REDIS_HOST=${RedisEndpoint}
+              HOSTED_ZONE_ID=${HostedZoneId}
+              LIVEKIT_SECRET_ARN=${LiveKitSecretArn}
+              LIVEKIT_PUBLIC_URL=wss://livekit.${LiveKitPublicIp}.nip.io
+              EOF
+              aws s3 cp s3://${FrontendBucket}/deploy/user-data/core.sh /tmp/uniplay-core.sh
+              chmod +x /tmp/uniplay-core.sh
+              /tmp/uniplay-core.sh
+            - FrontendBucket:
+                Fn::ImportValue: !Sub ${FoundationStackName}-FrontendBucketName
+              HostedZoneId:
+                Fn::ImportValue: !Sub ${FoundationStackName}-InternalHostedZoneId
+              LiveKitPublicIp: !GetAtt LiveKitEip.PublicIp
+              LiveKitSecretArn:
+                Fn::ImportValue: !Sub ${FoundationStackName}-LiveKitSecretArn
+              RedisEndpoint:
+                Fn::ImportValue: !Sub ${FoundationStackName}-RedisEndpoint
+              RegistryPrefix:
+                Fn::ImportValue: !Sub ${FoundationStackName}-RegistryPrefix
+      LaunchTemplateName: !Sub ${ProjectName}-${EnvironmentName}-core
+
+  CoreAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      HealthCheckGracePeriod: 600
+      HealthCheckType: EC2
+      LaunchTemplate:
+        LaunchTemplateId: !Ref CoreLaunchTemplate
+        Version: !GetAtt CoreLaunchTemplate.LatestVersionNumber
+      MaxSize: "1"
+      MinSize: "1"
+      DesiredCapacity: "1"
+      VPCZoneIdentifier:
+        - Fn::ImportValue: !Sub ${FoundationStackName}-PrivateSubnetAId
+        - Fn::ImportValue: !Sub ${FoundationStackName}-PrivateSubnetBId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${EnvironmentName}-core
+          PropagateAtLaunch: true
+        - Key: Project
+          Value: UniPlay
+          PropagateAtLaunch: true
+
+  MediaLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateData:
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              DeleteOnTermination: true
+              Encrypted: true
+              VolumeSize: 20
+              VolumeType: gp3
+        IamInstanceProfile:
+          Name: !Ref InstanceProfileName
+        ImageId: !Ref AmiId
+        InstanceType: !Ref MediaInstanceType
+        MetadataOptions:
+          HttpEndpoint: enabled
+          HttpTokens: required
+        SecurityGroupIds:
+          - !Ref MediaSecurityGroup
+        UserData:
+          Fn::Base64: !Sub
+            - |
+              #!/bin/bash
+              set -euo pipefail
+              mkdir -p /etc/uniplay
+              cat >/etc/uniplay/bootstrap.env <<'EOF'
+              AWS_REGION=${AWS::Region}
+              REDIS_HOST=${RedisEndpoint}
+              LIVEKIT_SECRET_ARN=${LiveKitSecretArn}
+              LIVEKIT_PUBLIC_IP=${LiveKitPublicIp}
+              FRONTEND_BUCKET=${FrontendBucket}
+              APPLICATION_ALB=${ApplicationAlb}
+              ORIGIN_VERIFY_SECRET=${OriginSecret}
+              APP_DOMAIN=uniplay.${LiveKitPublicIp}.nip.io
+              LIVEKIT_DOMAIN=livekit.${LiveKitPublicIp}.nip.io
+              EOF
+              aws s3 cp s3://${FrontendBucket}/deploy/user-data/media.sh /tmp/uniplay-media.sh
+              chmod +x /tmp/uniplay-media.sh
+              /tmp/uniplay-media.sh
+            - FrontendBucket:
+                Fn::ImportValue: !Sub ${FoundationStackName}-FrontendBucketName
+              ApplicationAlb: !GetAtt ApplicationLoadBalancer.DNSName
+              LiveKitPublicIp: !GetAtt LiveKitEip.PublicIp
+              LiveKitSecretArn:
+                Fn::ImportValue: !Sub ${FoundationStackName}-LiveKitSecretArn
+              RedisEndpoint:
+                Fn::ImportValue: !Sub ${FoundationStackName}-RedisEndpoint
+              OriginSecret: !Ref OriginVerifySecret
+      LaunchTemplateName: !Sub ${ProjectName}-${EnvironmentName}-media
+
+  MediaAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      HealthCheckGracePeriod: 600
+      HealthCheckType: ELB
+      LaunchTemplate:
+        LaunchTemplateId: !Ref MediaLaunchTemplate
+        Version: !GetAtt MediaLaunchTemplate.LatestVersionNumber
+      MaxSize: "1"
+      MinSize: "1"
+      DesiredCapacity: "1"
+      TargetGroupARNs:
+        - !Ref CaddyHttpTargetGroup
+        - !Ref CaddyHttpsTargetGroup
+        - !Ref LiveKitSignalTargetGroup
+        - !Ref LiveKitTcpTargetGroup
+        - !Ref LiveKitUdpTargetGroup
+      VPCZoneIdentifier:
+        - Fn::ImportValue: !Sub ${FoundationStackName}-PrivateSubnetAId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${EnvironmentName}-media
+          PropagateAtLaunch: true
+        - Key: Project
+          Value: UniPlay
+          PropagateAtLaunch: true
+
+  ObservabilityInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            DeleteOnTermination: true
+            Encrypted: true
+            VolumeSize: 25
+            VolumeType: gp3
+      IamInstanceProfile: !Ref InstanceProfileName
+      ImageId: !Ref AmiId
+      InstanceType: !Ref ObservabilityInstanceType
+      MetadataOptions:
+        HttpEndpoint: enabled
+        HttpTokens: required
+      SecurityGroupIds:
+        - !Ref ObservabilitySecurityGroup
+      SubnetId:
+        Fn::ImportValue: !Sub ${FoundationStackName}-PrivateSubnetAId
+      Tags:
+        - Key: Name
+          Value: !Sub ${ProjectName}-${EnvironmentName}-observability
+        - Key: Project
+          Value: UniPlay
+      UserData:
+        Fn::Base64: !Sub
+          - |
+            #!/bin/bash
+            set -euo pipefail
+            mkdir -p /etc/uniplay
+            cat >/etc/uniplay/bootstrap.env <<'EOF'
+            FRONTEND_BUCKET=${FrontendBucket}
+            GRAFANA_ADMIN_USER=${GrafanaAdminUser}
+            GRAFANA_ADMIN_PASSWORD=${GrafanaAdminPassword}
+            EOF
+            aws s3 cp s3://${FrontendBucket}/deploy/user-data/observability.sh /tmp/uniplay-observability.sh
+            chmod +x /tmp/uniplay-observability.sh
+            /tmp/uniplay-observability.sh
+          - FrontendBucket:
+              Fn::ImportValue: !Sub ${FoundationStackName}-FrontendBucketName
+
+Outputs:
+  ApplicationUrl:
+    Value: !Sub https://uniplay.${LiveKitEip}.nip.io
+  GrafanaUrl:
+    Value: !Sub https://uniplay.${LiveKitEip}.nip.io/grafana/
+  LiveKitUrl:
+    Value: !Sub wss://livekit.${LiveKitEip}.nip.io
+  ApplicationLoadBalancerDns:
+    Value: !GetAtt ApplicationLoadBalancer.DNSName
+  LiveKitNetworkLoadBalancerDns:
+    Value: !GetAtt LiveKitNetworkLoadBalancer.DNSName
