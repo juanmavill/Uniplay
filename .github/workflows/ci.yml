@@ -32,6 +32,7 @@ jobs:
             "frontend"
             "infra"
             "docs/adr/0001-monorepo-con-despliegue-independiente.md"
+            "docs/adr/0002-aws-recuperacion-automatica.md"
             "docs/git-workflow.md"
           )
 
@@ -48,9 +49,22 @@ jobs:
       - name: Validate local infrastructure compose file
         run: docker compose -f infra/docker-compose.yml config
 
-  api-gateway:
-    name: API gateway
+  backend:
+    # Cada servicio se compila y prueba por separado, igual que se despliega.
+    # Un fallo en uno no enmascara ni bloquea al resto.
+    name: ${{ matrix.service }}
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - api-gateway
+          - room-service
+          - game-service
+          - realtime-service
+          - voice-service
+          - metrics-service
 
     steps:
       - name: Checkout
@@ -63,8 +77,8 @@ jobs:
           java-version: "21"
           cache: maven
 
-      - name: Verify api-gateway
-        working-directory: api-gateway
+      - name: Verify ${{ matrix.service }}
+        working-directory: ${{ matrix.service }}
         run: mvn -B verify
 
   frontend:
@@ -86,101 +100,10 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Test frontend
+        working-directory: frontend
+        run: npm test
+
       - name: Build frontend
         working-directory: frontend
         run: npm run build
-
-  room-service:
-    name: Room service
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-
-      - name: Verify room-service
-        working-directory: room-service
-        run: mvn -B verify
-
-  game-service:
-    name: Game service
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-
-      - name: Verify game-service
-        working-directory: game-service
-        run: mvn -B verify
-
-  realtime-service:
-    name: Realtime service
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-
-      - name: Verify realtime-service
-        working-directory: realtime-service
-        run: mvn -B verify
-
-  voice-service:
-    name: Voice service
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-
-      - name: Verify voice-service
-        working-directory: voice-service
-        run: mvn -B verify
-
-  metrics-service:
-    name: Metrics service
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-
-      - name: Verify metrics-service
-        working-directory: metrics-service
-        run: mvn -B verify
