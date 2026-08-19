@@ -1,4 +1,4 @@
-// Dibujo sobre el lienzo. Los deltas llegan normalizados entre 0 y 1.
+// Canvas drawing. Deltas arrive normalised between 0 and 1.
 export function drawDelta(canvas, delta) {
   if (!canvas || !delta) {
     return;

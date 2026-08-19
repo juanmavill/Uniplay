@@ -22,13 +22,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 /**
- * Verifica el camino completo del servicio contra un Redis real: los eventos de
- * dominio publicados por los demas microservicios llegan por pub/sub, alimentan la
- * proyeccion de KPIs y quedan expuestos por HTTP.
+ * Exercises the full path against a real Redis: domain events published by the
+ * other microservices arrive over Pub/Sub, feed the KPI projection, and are
+ * exposed over HTTP.
  *
- * <p>Se usa Testcontainers en lugar de un doble porque el valor de este servicio
- * esta en la suscripcion misma. Un test que simule la conexion Redis no comprobaria
- * el registro de los canales ni la deserializacion de los eventos.
+ * <p>Testcontainers is used instead of a stub because the value of this service
+ * is the subscription itself. A test that mocked the Redis connection would
+ * verify neither the channel registration nor the event deserialization.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
@@ -52,7 +52,7 @@ class MetricsServiceRedisIntegrationTest {
     private TestRestTemplate restTemplate;
 
     @Test
-    void proyectaKpisDeNegocioDesdeEventosPublicadosEnRedis() {
+    void projectsBusinessKpisFromEventsPublishedToRedis() {
         publish(RedisDomainEventSubscriber.ROOM_CREATED_CHANNEL, "{\"code\":\"SALA01\"}");
         publish(RedisDomainEventSubscriber.PLAYER_CONNECTED_CHANNEL, "{\"code\":\"SALA01\",\"playerId\":\"p1\"}");
         publish(RedisDomainEventSubscriber.PLAYER_CONNECTED_CHANNEL, "{\"code\":\"SALA01\",\"playerId\":\"p2\"}");
@@ -64,20 +64,20 @@ class MetricsServiceRedisIntegrationTest {
             BusinessKpisResult kpis = getBusinessKpisUseCase.currentKpis();
             assertThat(kpis.activeRooms()).isEqualTo(1);
             assertThat(kpis.connectedPlayers()).isEqualTo(2);
-            // Se inician dos rondas y se adivina una: 1/2.
+            // Two rounds started, one guessed: 1/2.
             assertThat(kpis.guessRate()).isEqualTo(0.5);
             assertThat(kpis.averagePlayersPerRoom()).isEqualTo(2.0);
         });
 
-        BusinessKpisResponse expuestos = restTemplate.getForObject("/metrics/kpis", BusinessKpisResponse.class);
-        assertThat(expuestos).isNotNull();
-        assertThat(expuestos.activeRooms()).isEqualTo(1);
-        assertThat(expuestos.connectedPlayers()).isEqualTo(2);
+        BusinessKpisResponse exposed = restTemplate.getForObject("/metrics/kpis", BusinessKpisResponse.class);
+        assertThat(exposed).isNotNull();
+        assertThat(exposed.activeRooms()).isEqualTo(1);
+        assertThat(exposed.connectedPlayers()).isEqualTo(2);
     }
 
     @Test
-    void mantieneLaSuscripcionActivaTrasUnEventoInvalido() {
-        publish(RedisDomainEventSubscriber.ROOM_CREATED_CHANNEL, "no-es-json");
+    void keepsTheSubscriptionAliveAfterAnInvalidEvent() {
+        publish(RedisDomainEventSubscriber.ROOM_CREATED_CHANNEL, "not-json");
         publish(RedisDomainEventSubscriber.ROOM_CREATED_CHANNEL, "{\"code\":\"SALA02\"}");
 
         await().atMost(EVENT_TIMEOUT)

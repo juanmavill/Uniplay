@@ -1,4 +1,4 @@
-// Cliente HTTP contra el api-gateway.
+// HTTP client for the api-gateway.
 export function createApiClient(baseUrl) {
   const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
   return {

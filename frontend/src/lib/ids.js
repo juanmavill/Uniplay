@@ -1,5 +1,5 @@
-// Identificadores de cliente. Se usa randomUUID cuando esta disponible y se cae
-// a getRandomValues en contextos no seguros, donde el navegador no lo expone.
+// Client-side identifiers. Uses randomUUID where available and falls back to
+// getRandomValues in non-secure contexts, where the browser does not expose it.
 export function createClientId() {
   if (typeof crypto?.randomUUID === "function") {
     return crypto.randomUUID();

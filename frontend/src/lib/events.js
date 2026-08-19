@@ -1,6 +1,6 @@
 import { createClientId } from "./ids.js";
 
-// Traduccion de los eventos de dominio que llegan por STOMP a estado de la UI.
+// Maps the domain events arriving over STOMP onto UI state.
 export function handleRoundEvent(payload, setChatMessages, currentPlayerId) {
   const type = eventType(payload);
   if (type === "WORD_GUESSED") {

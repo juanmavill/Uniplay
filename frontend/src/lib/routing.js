@@ -1,4 +1,4 @@
-// Rutas de jugador: /sala/{codigo}/jugador/{id}
+// Player routes: /sala/{code}/jugador/{id}
 export function parsePlayerRoute(pathname) {
   const match = pathname.match(/^\/sala\/([^/]+)\/jugador\/([^/]+)\/?$/);
   if (!match) {

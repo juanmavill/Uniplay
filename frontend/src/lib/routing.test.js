@@ -3,22 +3,22 @@ import { describe, expect, it } from "vitest";
 import { parsePlayerRoute, playerPath } from "./routing.js";
 
 describe("parsePlayerRoute", () => {
-  it("extrae sala y jugador de una ruta de jugador", () => {
+  it("extracts room and player from a player route", () => {
     expect(parsePlayerRoute("/sala/ABC123/jugador/p-1")).toEqual({
       roomCode: "ABC123",
       playerId: "p-1"
     });
   });
 
-  it("normaliza el codigo de sala a mayusculas", () => {
+  it("normalises the room code to upper case", () => {
     expect(parsePlayerRoute("/sala/abc123/jugador/p-1").roomCode).toBe("ABC123");
   });
 
-  it("tolera la barra final", () => {
+  it("tolerates a trailing slash", () => {
     expect(parsePlayerRoute("/sala/ABC123/jugador/p-1/")).not.toBeNull();
   });
 
-  it("devuelve null en el lobby y en rutas incompletas", () => {
+  it("returns null for the lobby and for incomplete routes", () => {
     expect(parsePlayerRoute("/")).toBeNull();
     expect(parsePlayerRoute("/sala/ABC123")).toBeNull();
     expect(parsePlayerRoute("/otra/cosa")).toBeNull();
@@ -27,10 +27,10 @@ describe("parsePlayerRoute", () => {
 
 describe("playerPath", () => {
   /**
-   * Cada pestana abre su propia ruta de jugador, de modo que un identificador con
-   * caracteres reservados romperia el enlace si no se codificara.
+   * Each tab opens its own player route, so an identifier containing reserved
+   * characters would break the link if it were not encoded.
    */
-  it("produce una ruta que parsePlayerRoute vuelve a entender", () => {
+  it("produces a route that parsePlayerRoute reads back", () => {
     const path = playerPath("ABC123", "jugador/raro?x=1");
 
     expect(parsePlayerRoute(path)).toEqual({

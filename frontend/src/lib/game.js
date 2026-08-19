@@ -1,4 +1,4 @@
-// Reglas y vocabulario del juego, sin dependencias de React ni del DOM.
+// Game rules and vocabulary. No React and no DOM dependencies.
 export const DECKS = ["GENERAL", "MATEMATICAS", "SISTEMAS", "FISICA", "CUSTOM"];
 export const MODES = ["CLASSIC", "ALL_DRAW"];
 export const DEFAULT_ROUND_LIMIT = 3;

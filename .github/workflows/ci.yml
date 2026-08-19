@@ -51,8 +51,8 @@ jobs:
         run: docker compose -f infra/docker-compose.yml config
 
   backend:
-    # Cada servicio se compila y prueba por separado, igual que se despliega.
-    # Un fallo en uno no enmascara ni bloquea al resto.
+    # Each service builds and tests on its own, the same way it deploys.
+    # A failure in one neither masks nor blocks the others.
     name: ${{ matrix.service }}
     runs-on: ubuntu-latest
 
