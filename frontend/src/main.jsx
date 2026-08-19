@@ -1,48 +1,38 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
-import { Brush, Check, Copy, Eraser, Mic, MicOff, Play, RefreshCw, Send, Trophy, Users, Volume2, Vote } from "lucide-react";
+import { Check, Copy, Mic, MicOff, Play, RefreshCw, Send, Trophy, Users, Volume2, Vote } from "lucide-react";
 import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import { Room, RoomEvent, Track } from "livekit-client";
+import { DrawingBoard } from "./components/DrawingBoard.jsx";
+import { PanelTitle } from "./components/PanelTitle.jsx";
+import { StatusLine } from "./components/StatusLine.jsx";
+import { useRoundTimer } from "./hooks/useRoundTimer.js";
+import { createApiClient } from "./lib/api.js";
+import {
+  DECKS,
+  DEFAULT_ROUND_LIMIT,
+  MODES,
+  clampRoundLimit,
+  deckLabel,
+  indexScores,
+  maskWord,
+  parseCustomWords
+} from "./lib/game.js";
+import {
+  handleRoundEvent,
+  handleVoiceEvent,
+  initialVoiceState,
+  removeVoiceAudioElements,
+  safeJson,
+  voiceStatusLabel
+} from "./lib/events.js";
+import { createClientId } from "./lib/ids.js";
+import { parsePlayerRoute, playerPath } from "./lib/routing.js";
 import "./styles.css";
 
-const DECKS = ["GENERAL", "MATEMATICAS", "SISTEMAS", "FISICA", "CUSTOM"];
-const MODES = ["CLASSIC", "ALL_DRAW"];
-const DEFAULT_ROUND_LIMIT = 3;
 const INITIAL_PARAMS = new URLSearchParams(window.location.search);
 const INITIAL_ROUTE = parsePlayerRoute(window.location.pathname);
-
-function createClientId() {
-  if (typeof crypto?.randomUUID === "function") {
-    return crypto.randomUUID();
-  }
-  if (typeof crypto?.getRandomValues === "function") {
-    const bytes = new Uint8Array(16);
-    crypto.getRandomValues(bytes);
-    bytes[6] = (bytes[6] & 0x0f) | 0x40;
-    bytes[8] = (bytes[8] & 0x3f) | 0x80;
-    return [...bytes].map((byte, index) => {
-      const value = byte.toString(16).padStart(2, "0");
-      return [4, 6, 8, 10].includes(index) ? `-${value}` : value;
-    }).join("");
-  }
-  return `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-function parsePlayerRoute(pathname) {
-  const match = pathname.match(/^\/sala\/([^/]+)\/jugador\/([^/]+)\/?$/);
-  if (!match) {
-    return null;
-  }
-  return {
-    roomCode: decodeURIComponent(match[1]).toUpperCase(),
-    playerId: decodeURIComponent(match[2])
-  };
-}
-
-function playerPath(roomCode, playerId) {
-  return `/sala/${encodeURIComponent(roomCode)}/jugador/${encodeURIComponent(playerId)}`;
-}
 
 function App() {
   const [gatewayUrl] = React.useState(() => localStorage.getItem("uniplay.gatewayUrl") || "");
@@ -847,337 +837,6 @@ function App() {
       </section>
     </main>
   );
-}
-
-function DrawingBoard({ roomCode, playerId, gatewayBase, canDraw }) {
-  const canvasRef = React.useRef(null);
-  const stompRef = React.useRef(null);
-  const drawingRef = React.useRef(false);
-  const previousPointRef = React.useRef(null);
-  const [color, setColor] = React.useState("#0f8b8d");
-  const [width, setWidth] = React.useState(5);
-
-  React.useEffect(() => {
-    if (!roomCode) {
-      return undefined;
-    }
-    const client = new Client({
-      webSocketFactory: () => new SockJS(`${gatewayBase}/ws`),
-      reconnectDelay: 3000
-    });
-    client.activate();
-    stompRef.current = client;
-    return () => client.deactivate();
-  }, [gatewayBase, roomCode]);
-
-  React.useEffect(() => {
-    const handler = (event) => drawDelta(canvasRef.current, event.detail);
-    window.addEventListener("uniplay:draw", handler);
-    return () => window.removeEventListener("uniplay:draw", handler);
-  }, []);
-
-  React.useEffect(() => {
-    const handler = () => {
-      drawingRef.current = false;
-      previousPointRef.current = null;
-      clearCanvas(canvasRef.current);
-    };
-    window.addEventListener("uniplay:clear-canvas", handler);
-    return () => window.removeEventListener("uniplay:clear-canvas", handler);
-  }, []);
-
-  React.useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) {
-      return;
-    }
-    const resize = () => {
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = Math.floor(rect.width * window.devicePixelRatio);
-      canvas.height = Math.floor(rect.height * window.devicePixelRatio);
-    };
-    resize();
-    window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
-  }, []);
-
-  function pointerPoint(event) {
-    const rect = canvasRef.current.getBoundingClientRect();
-    return {
-      x: (event.clientX - rect.left) / rect.width,
-      y: (event.clientY - rect.top) / rect.height
-    };
-  }
-
-  function startDrawing(event) {
-    if (!canDraw) {
-      return;
-    }
-    drawingRef.current = true;
-    previousPointRef.current = pointerPoint(event);
-  }
-
-  function stopDrawing() {
-    drawingRef.current = false;
-    previousPointRef.current = null;
-  }
-
-  function moveDrawing(event) {
-    if (!canDraw || !drawingRef.current || !previousPointRef.current || !roomCode) {
-      return;
-    }
-    const nextPoint = pointerPoint(event);
-    const delta = {
-      playerId: playerId || "anonymous",
-      fromX: previousPointRef.current.x,
-      fromY: previousPointRef.current.y,
-      toX: nextPoint.x,
-      toY: nextPoint.y,
-      color,
-      width
-    };
-    drawDelta(canvasRef.current, delta);
-    if (stompRef.current?.connected) {
-      stompRef.current.publish({
-        destination: `/app/rooms/${roomCode}/draw`,
-        body: JSON.stringify(delta)
-      });
-    }
-    previousPointRef.current = nextPoint;
-  }
-
-  return (
-    <section className="canvas-shell">
-      <div className="canvas-tools">
-        <PanelTitle icon={<Brush size={18} />} title="Lienzo" />
-        <div className="tool-group">
-          <input type="color" value={color} onChange={(event) => setColor(event.target.value)} aria-label="Color" disabled={!canDraw} />
-          <input type="range" min="2" max="12" value={width} onChange={(event) => setWidth(Number(event.target.value))} aria-label="Grosor" disabled={!canDraw} />
-          <button onClick={() => clearCanvas(canvasRef.current)} disabled={!canDraw} title="Limpiar">
-            <Eraser size={16} />
-          </button>
-        </div>
-      </div>
-      <div className="canvas-frame">
-        <canvas
-          id="main-drawing-canvas"
-          ref={canvasRef}
-          className="drawing-canvas"
-          onPointerDown={startDrawing}
-          onPointerMove={moveDrawing}
-          onPointerUp={stopDrawing}
-          onPointerLeave={stopDrawing}
-        />
-        {!canDraw && <div className="canvas-lock">Esperando turno</div>}
-      </div>
-    </section>
-  );
-}
-
-function PanelTitle({ icon, title, action }) {
-  return (
-    <div className="panel-title">
-      <div>{icon}<h2>{title}</h2></div>
-      {action}
-    </div>
-  );
-}
-
-function StatusLine({ label, value, tone = "muted" }) {
-  return (
-    <div className="status-line">
-      <span>{label}</span>
-      <strong className={tone}>{value}</strong>
-    </div>
-  );
-}
-
-function useRoundTimer(round) {
-  const [now, setNow] = React.useState(Date.now());
-  React.useEffect(() => {
-    const intervalId = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(intervalId);
-  }, []);
-  if (!round?.endsAt) {
-    return "--:--";
-  }
-  const remainingSeconds = Math.max(0, Math.ceil((new Date(round.endsAt).getTime() - now) / 1000));
-  return `${String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:${String(remainingSeconds % 60).padStart(2, "0")}`;
-}
-
-function clampRoundLimit(value) {
-  const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed)) {
-    return DEFAULT_ROUND_LIMIT;
-  }
-  return Math.min(Math.max(parsed, 1), 20);
-}
-
-function createApiClient(baseUrl) {
-  const normalizedBaseUrl = baseUrl.replace(/\/$/, "");
-  return {
-    baseUrl: normalizedBaseUrl,
-    createRoom: (maxPlayers) => request(normalizedBaseUrl, "/salas", { method: "POST", body: { maxPlayers } }),
-    joinRoom: (code, playerName) => request(normalizedBaseUrl, `/salas/${code}/jugadores`, { method: "POST", body: { playerName } }),
-    listPlayers: (code) => request(normalizedBaseUrl, `/salas/${code}/jugadores`),
-    startRound: (code, mode, deck, drawerId, customWords, participantIds) => request(normalizedBaseUrl, `/games/${code}/rounds`, { method: "POST", body: { mode, deck, drawerId, customWords, participantIds } }),
-    submitAnswer: (code, playerId, answer) => request(normalizedBaseUrl, `/games/${code}/answers`, { method: "POST", body: { playerId, answer } }),
-    getGameState: (code, viewerPlayerId) => request(normalizedBaseUrl, `/games/${code}${viewerPlayerId ? `?viewerPlayerId=${encodeURIComponent(viewerPlayerId)}` : ""}`),
-    expireRound: (code, roundId) => request(normalizedBaseUrl, `/games/${code}/rounds/${roundId}/timeout`, { method: "POST" }),
-    castVote: (code, roundId, voterId, candidateId) => request(normalizedBaseUrl, `/games/${code}/rounds/${roundId}/votes`, { method: "POST", body: { voterId, candidateId } }),
-    createVoiceToken: (roomCode, playerId, playerName) => request(normalizedBaseUrl, "/voice/token", { method: "POST", body: { roomCode, playerId, playerName } }),
-    setMuted: (roomCode, playerId, muted) => request(normalizedBaseUrl, "/voice/mute", { method: "POST", body: { roomCode, playerId, muted } }),
-    setSpeaking: (roomCode, playerId, speaking) => request(normalizedBaseUrl, "/voice/speaking", { method: "POST", body: { roomCode, playerId, speaking } }),
-  };
-}
-
-async function request(baseUrl, path, options = {}) {
-  const response = await fetch(`${baseUrl}${path}`, {
-    method: options.method || "GET",
-    headers: options.body ? { "Content-Type": "application/json" } : undefined,
-    body: options.body ? JSON.stringify(options.body) : undefined
-  });
-
-  if (!response.ok) {
-    let detail = `HTTP ${response.status}`;
-    try {
-      const problem = await response.json();
-      detail = problem.detail || problem.title || detail;
-    } catch {
-      detail = response.statusText || detail;
-    }
-    throw new Error(detail);
-  }
-
-  if (response.status === 204) {
-    return {};
-  }
-  return response.json();
-}
-
-function drawDelta(canvas, delta) {
-  if (!canvas || !delta) {
-    return;
-  }
-  const context = canvas.getContext("2d");
-  const ratio = window.devicePixelRatio || 1;
-  context.save();
-  context.scale(ratio, ratio);
-  context.strokeStyle = delta.color || "#0f8b8d";
-  context.lineWidth = delta.width || 4;
-  context.lineCap = "round";
-  context.lineJoin = "round";
-  const rect = canvas.getBoundingClientRect();
-  context.beginPath();
-  context.moveTo(delta.fromX * rect.width, delta.fromY * rect.height);
-  context.lineTo(delta.toX * rect.width, delta.toY * rect.height);
-  context.stroke();
-  context.restore();
-}
-
-function clearCanvas(canvas) {
-  if (!canvas) {
-    return;
-  }
-  canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
-}
-
-function handleRoundEvent(payload, setChatMessages, currentPlayerId) {
-  const type = eventType(payload);
-  if (type === "WORD_GUESSED") {
-    if (payload?.playerId === currentPlayerId) {
-      return;
-    }
-    setChatMessages((current) => [
-      { id: createClientId(), type: "system", tone: "success", text: "Un jugador adivino la palabra" },
-      ...current
-    ].slice(0, 18));
-  }
-}
-
-function eventType(payload) {
-  return payload?.type || payload?.eventType || payload?.name;
-}
-
-function handleVoiceEvent(payload, setVoice, currentPlayerId) {
-  if (payload?.participantIdentity === currentPlayerId && typeof payload?.muted === "boolean") {
-    setVoice((previous) => ({ ...previous, muted: payload.muted }));
-  }
-}
-
-function initialVoiceState() {
-  return {
-    connected: false,
-    muted: true,
-    roomName: "",
-    status: "disconnected",
-    participantCount: 0,
-    speakingNames: [],
-    audioBlocked: false,
-    permissionDenied: false
-  };
-}
-
-function voiceStatusLabel(voice) {
-  if (voice.status === "connecting") {
-    return "Conectando";
-  }
-  if (voice.status === "reconnecting" || voice.status === "signalReconnecting") {
-    return "Reconectando";
-  }
-  if (!voice.connected) {
-    return "Sin voz";
-  }
-  return voice.muted ? "Escuchando" : "Microfono activo";
-}
-
-function removeVoiceAudioElements() {
-  document.querySelectorAll("[data-uniplay-voice-audio='remote']").forEach((element) => element.remove());
-}
-
-function safeJson(value) {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return { message: value };
-  }
-}
-
-function maskWord(value) {
-  return String(value)
-    .split("")
-    .map((character) => (character === " " ? " " : "_"))
-    .join(" ");
-}
-
-function indexScores(scores) {
-  const indexed = new Map();
-  if (Array.isArray(scores)) {
-    scores.forEach((score) => {
-      indexed.set(score.playerId, score.score || score.points || 0);
-    });
-  } else if (scores && typeof scores === "object") {
-    Object.entries(scores).forEach(([playerId, score]) => indexed.set(playerId, Number(score) || 0));
-  }
-  return indexed;
-}
-
-function deckLabel(value) {
-  return {
-    GENERAL: "General",
-    MATEMATICAS: "Matematicas",
-    SISTEMAS: "Sistemas",
-    FISICA: "Fisica",
-    CUSTOM: "Personalizado"
-  }[value];
-}
-
-function parseCustomWords(value) {
-  const words = String(value)
-    .split(/[\n,;]+/)
-    .map((word) => word.trim())
-    .filter(Boolean);
-  return [...new Map(words.map((word) => [word.toLocaleLowerCase(), word])).values()];
 }
 
 createRoot(document.getElementById("root")).render(<App />);
