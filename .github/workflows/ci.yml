@@ -33,6 +33,7 @@ jobs:
             "infra"
             "docs/adr/0001-monorepo-con-despliegue-independiente.md"
             "docs/adr/0002-aws-recuperacion-automatica.md"
+            "docs/adr/0003-limites-de-servicio.md"
             "docs/git-workflow.md"
           )
 

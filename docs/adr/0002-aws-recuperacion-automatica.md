@@ -1,39 +1,43 @@
-# ADR 0002: Despliegue AWS agrupado con recuperacion automatica
+# ADR 0002: Grouped AWS deployment with automatic recovery
 
-## Estado
+## Status
 
-Aceptada y desplegada el 21 de julio de 2026 en `us-east-1`.
+Accepted and deployed on 21 July 2026 in `us-east-1`.
 
-## Contexto
+## Context
 
-Desplegar un EC2 por microservicio aumenta costo y operacion sin aportar una
-ventaja proporcional para la carga academica de UniPlay. Realtime Service no
-puede ejecutarse en paralelo sin coordinar las sesiones STOMP entre replicas.
-AWS Academy tampoco permite crear distribuciones CloudFront.
+Running one EC2 instance per microservice multiplies cost and operational effort
+without a proportional benefit for UniPlay's workload. realtime-service cannot run
+as multiple replicas without coordinating STOMP sessions between them. The
+academic AWS account also does not allow creating CloudFront distributions.
 
 ## Decision
 
-- Agrupar API Gateway y Realtime Service en un nodo Edge.
-- Agrupar Room, Game, Metrics y Voice Service en un nodo Core.
-- Mantener LiveKit y Caddy en un nodo Media con puertos WebRTC dedicados.
-- Mantener Prometheus y Grafana en un nodo Observability.
-- Ejecutar Edge, Core y Media en ASG de una instancia para autorrecuperacion.
-- Usar ElastiCache Redis con principal y replica Multi-AZ.
-- Publicar HTTPS con Caddy, una EIP, NLB y nombres temporales `nip.io`.
-- Conservar imagenes independientes por microservicio en ECR.
+- Group api-gateway and realtime-service on an Edge node.
+- Group room, game, metrics and voice services on a Core node.
+- Keep LiveKit and Caddy on a Media node with dedicated WebRTC ports.
+- Keep Prometheus and Grafana on an Observability node.
+- Run Edge, Core and Media in single-instance Auto Scaling Groups so a failed
+  instance is replaced automatically.
+- Use ElastiCache Redis with a primary and a Multi-AZ replica.
+- Serve HTTPS through Caddy with one Elastic IP, an NLB and temporary `nip.io`
+  hostnames.
+- Keep independent per-service images in ECR.
 
-## Consecuencias
+## Consequences
 
-- Una falla EC2 activa el reemplazo automatico, pero existe una interrupcion
-  mientras inicia la nueva instancia.
-- El estado persistido en Redis sobrevive al reemplazo de Edge/Core/Media.
-- El estado en memoria de WebSocket y trazos no confirmados puede perderse.
-- No se requieren dos instancias Realtime ni sincronizacion STOMP distribuida.
-- El frontend y las APIs usan HTTPS valido sin comprar un dominio.
-- `nip.io` es apropiado para demostracion, no para un entorno productivo.
+- An EC2 failure triggers automatic replacement, but there is an outage while the
+  new instance boots.
+- State persisted in Redis survives the replacement of an Edge, Core or Media
+  node.
+- In-memory WebSocket state and unconfirmed drawing strokes are lost.
+- No second realtime instance is needed, and no distributed STOMP session
+  synchronisation.
+- The frontend and the APIs get valid HTTPS without buying a domain.
+- `nip.io` is appropriate for a demonstration, not for a production environment.
 
-## Evolucion recomendada
+## Recommended evolution
 
-Con un dominio y permisos AWS completos, reemplazar Caddy/nip.io por Route 53,
-ACM y CloudFront o un ALB HTTPS. Cuando la carga lo justifique, externalizar el
-estado de sesiones Realtime antes de aumentar su capacidad por encima de uno.
+With a real domain and full AWS permissions, replace Caddy and `nip.io` with
+Route 53, ACM and either CloudFront or an HTTPS ALB. When load justifies it, move
+realtime session state out of the process before scaling it beyond one instance.
